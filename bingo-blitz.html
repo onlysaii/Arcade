@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bingo Blitz 🎱</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Exo+2:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0c;--surface:#141417;--surface2:#1c1c20;
+  --accent:#3b82f6;--a2:#60a5fa;
+  --gold:#f59e0b;--green:#10b981;--red:#ef4444;
+  --felt:#0b3d2e;--felt2:#0e4d3a;
+  --text:#e8e8ec;--text2:#7a7a85;
+  --glass:rgba(255,255,255,0.035);--glass-b:rgba(255,255,255,0.08);
+  --fh:'Orbitron',monospace;--fb:'Exo 2',sans-serif;--fm:'Share Tech Mono',monospace;
+  --cB:#22c55e;--cI:#f59e0b;--cN:#ec4899;--cG:#3b82f6;--cO:#a855f7;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:var(--fb);background:var(--bg);color:var(--text);overflow:hidden}
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+.screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;overflow-y:auto;padding:18px;opacity:0;pointer-events:none;transition:opacity .3s}
+.screen.active{opacity:1;pointer-events:all}
+
+/* ── MENU ── */
+#menu-screen{justify-content:center;gap:16px}
+.logo-icon{font-size:48px;display:block;filter:drop-shadow(0 0 18px var(--accent));animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.logo-title{font-family:var(--fh);font-size:clamp(22px,7vw,38px);font-weight:900;background:linear-gradient(135deg,var(--a2),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:3px;text-align:center}
+.logo-sub{font-size:11px;color:var(--text2);letter-spacing:5px;text-transform:uppercase;margin-top:3px;text-align:center}
+.mode-grid{display:flex;flex-direction:column;gap:10px;width:100%;max-width:340px}
+.mode-card{background:var(--glass);border:1px solid var(--glass-b);border-radius:16px;padding:15px 17px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:13px}
+.mode-card:hover{border-color:var(--a2);background:rgba(59,130,246,.1);transform:translateY(-2px)}
+.mode-card:active{transform:scale(.97)}
+.mode-icon{font-size:22px;flex-shrink:0}
+.mode-name{font-family:var(--fh);font-size:11px;font-weight:700;letter-spacing:1px}
+.mode-desc{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.4}
+.stats-bar{display:flex;gap:14px;background:var(--glass);border:1px solid var(--glass-b);border-radius:12px;padding:11px 18px;width:100%;max-width:340px}
+.stat-item{flex:1;text-align:center}
+.stat-val{font-family:var(--fh);font-size:17px;font-weight:700;color:var(--a2)}
+.stat-lbl{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.toggle-row{display:flex;gap:8px}
+.tog{background:var(--glass);border:1px solid var(--glass-b);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:var(--fb);font-size:12px;color:var(--text2);transition:all .2s}
+.tog.on{color:var(--a2);border-color:var(--a2)}
+.home-back{position:absolute;top:18px;left:18px;background:var(--glass);border:1px solid var(--glass-b);border-radius:10px;padding:7px 13px;font-family:var(--fh);font-size:10px;color:var(--text2);cursor:pointer;text-decoration:none;transition:all .2s;z-index:20}
+.home-back:hover{background:var(--glass-b);color:var(--text)}
+
+/* ── FILL SCREEN ── */
+#fill-screen{justify-content:flex-start;gap:12px;padding:58px 16px 28px}
+.fill-title{font-family:var(--fh);font-size:12px;letter-spacing:2px;text-align:center}
+.fill-sub{font-size:11.5px;color:var(--text2);text-align:center;max-width:310px;line-height:1.5}
+.pool-row{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:360px;max-height:140px;overflow-y:auto;padding:3px}
+.pool-num{width:32px;height:32px;border-radius:8px;background:var(--glass);border:1px solid var(--glass-b);display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;color:var(--text);flex-shrink:0}
+.pool-num:hover{border-color:var(--a2);transform:translateY(-2px)}
+.pool-num.used{opacity:.15;pointer-events:none}
+.pool-num.sel{border-color:var(--a2);background:rgba(59,130,246,.2)}
+.fill-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;width:100%;max-width:270px}
+.fill-cell{aspect-ratio:1;border-radius:8px;background:var(--surface2);border:1.5px dashed var(--glass-b);display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.fill-cell:hover{border-color:var(--a2)}
+.fill-cell.filled{border-style:solid;border-color:var(--a2);background:rgba(59,130,246,.12);color:var(--a2)}
+.fill-actions{display:flex;gap:8px;width:100%;max-width:270px}
+
+/* B75 card preview (fill screen) */
+.card-preview{display:flex;flex-direction:column;align-items:center;gap:4px}
+.card-header{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:100%;max-width:270px}
+.col-hdr{height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:11px;font-weight:900;color:#fff}
+.card-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:100%;max-width:270px}
+.card-cell{height:42px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:13px;font-weight:700;transition:all .2s}
+.card-cell.free-cell{font-family:var(--fh);font-size:8px;letter-spacing:1px}
+
+/* ── GAME SCREEN ── */
+#game-screen{padding:10px;gap:9px;justify-content:flex-start}
+.game-topbar{width:100%;max-width:680px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.back-btn{width:34px;height:34px;background:var(--glass);border:1px solid var(--glass-b);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text);transition:all .2s;flex-shrink:0}
+.back-btn:hover{background:var(--glass-b)}
+.mode-pill{background:var(--glass);border:1px solid var(--glass-b);border-radius:7px;padding:5px 10px;font-family:var(--fh);font-size:8px;letter-spacing:1.5px;color:var(--text2)}
+.draw-count{margin-left:auto;background:var(--glass);border:1px solid var(--glass-b);border-radius:7px;padding:5px 10px;font-family:var(--fh);font-size:8px;letter-spacing:1px;color:var(--text2)}
+.draw-count span{color:var(--text)}
+
+/* Table: 3 CPU seats across + felt below */
+.table-wrap{width:100%;max-width:680px;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto;grid-template-areas:"s1 s2 s3" "felt felt felt";gap:7px}
+.cpu-seat{background:var(--glass);border:1px solid var(--glass-b);border-radius:12px;padding:8px 5px;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;transition:border-color .3s}
+.cpu-seat.active{border-color:var(--a2);box-shadow:0 0 12px rgba(59,130,246,.4)}
+.cpu-seat.won{border-color:var(--gold);box-shadow:0 0 12px rgba(245,158,11,.4)}
+.cpu-avatar{font-size:15px}
+.cpu-name{font-family:var(--fh);font-size:7.5px;letter-spacing:.5px;color:var(--text2);text-align:center}
+.cpu-boards{display:flex;gap:4px}
+.dot-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--surface2);border-radius:5px;padding:3px}
+.dot{width:6px;height:6px;border-radius:50%;background:#2e2e36}
+.dot.on{background:var(--gold);box-shadow:0 0 3px rgba(245,158,11,.6)}
+.cpu-win-badge{position:absolute;top:-6px;right:-4px;background:var(--gold);color:#2a1c00;font-family:var(--fh);font-size:6.5px;font-weight:700;padding:2px 5px;border-radius:5px}
+.bingo-pips{display:flex;gap:2px;margin-top:2px}
+.pip{width:11px;height:11px;border-radius:3px;background:var(--surface2);color:var(--text2);font-family:var(--fh);font-size:6px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.pip.lit{background:var(--gold);color:#2a1c00;box-shadow:0 0 4px rgba(245,158,11,.5)}
+
+/* Felt */
+.felt{grid-area:felt;background:radial-gradient(ellipse at center,var(--felt2),var(--felt));border:2px solid #062a20;border-radius:16px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:inset 0 2px 14px rgba(0,0,0,.4)}
+.ball-row{display:flex;align-items:center;gap:12px}
+.ball-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ball{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:14px;font-weight:900;box-shadow:0 6px 18px rgba(0,0,0,.4), inset 0 -5px 8px rgba(0,0,0,.2);flex-shrink:0;transition:background .4s}
+.ball.empty{background:rgba(255,255,255,.08);color:rgba(255,255,255,.35);font-size:12px;box-shadow:none}
+@keyframes ballPop{0%{transform:scale(0) rotate(-90deg)}100%{transform:scale(1) rotate(0)}}
+.ball.pop{animation:ballPop .35s cubic-bezier(.175,.885,.32,1.275)}
+.ball-label{font-family:var(--fh);font-size:10px;font-weight:700;letter-spacing:1px;transition:color .4s}
+.recent-col{display:flex;flex-direction:column;gap:5px}
+.recent-lbl{font-family:var(--fh);font-size:7px;letter-spacing:2px;color:rgba(255,255,255,.4);text-transform:uppercase}
+.recent-chips{display:flex;gap:4px;flex-wrap:wrap;max-width:180px}
+.chip{height:22px;padding:0 6px;border-radius:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:8.5px;color:rgba(255,255,255,.75);white-space:nowrap}
+.cdown-text{font-family:var(--fh);font-size:8.5px;letter-spacing:1px;color:rgba(255,255,255,.45);text-align:center}
+.cdown-text b{color:var(--a2)}
+
+/* ── Bingo 25 Chat Area ── */
+.chat-area{width:100%;max-width:680px;background:var(--glass);border:1px solid var(--glass-b);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;max-height:115px;overflow-y:auto}
+.bubble-row{display:flex;align-items:flex-end;gap:7px}
+.bubble-row.you{flex-direction:row-reverse}
+.bubble-avatar{font-size:13px;flex-shrink:0}
+.bubble{padding:7px 12px;border-radius:12px;font-family:var(--fh);font-size:10px;max-width:70%;line-height:1.3}
+.bubble.cpu{background:var(--surface2);color:var(--text2);border-radius:12px 12px 12px 3px}
+.bubble.you-b{background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.35);color:var(--a2);border-radius:12px 12px 3px 12px}
+.bubble .num{font-size:15px;font-weight:700;color:var(--text);display:inline;margin-left:5px}
+.bubble.you-b .num{color:var(--a2)}
+
+/* Player call input */
+.call-area{width:100%;max-width:680px;display:none;flex-direction:row;align-items:center;gap:9px}
+.call-area.visible{display:flex}
+.call-prompt{font-family:var(--fh);font-size:9px;letter-spacing:1.5px;color:var(--a2);white-space:nowrap;flex-shrink:0}
+.call-input{flex:1;background:var(--surface2);border:1.5px solid var(--a2);border-radius:10px;padding:10px 14px;font-family:var(--fh);font-size:18px;color:var(--a2);text-align:center;outline:none;min-width:0;box-shadow:0 0 10px rgba(59,130,246,.2)}
+.call-btn{flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--a2));border:none;border-radius:10px;padding:11px 18px;font-family:var(--fh);font-size:10px;font-weight:700;letter-spacing:1.5px;color:#fff;cursor:pointer;transition:all .2s}
+.call-btn:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(59,130,246,.4)}
+.call-btn:active{transform:scale(.97)}
+
+/* Status + bingo track */
+.status-line{font-family:var(--fh);font-size:10px;letter-spacing:1px;color:var(--text2);text-align:center;min-height:13px;max-width:380px}
+.you-bingo-track{display:flex;align-items:center;gap:7px;font-family:var(--fh);font-size:9px;letter-spacing:1px;color:var(--text2)}
+.you-bingo-track .pip{width:18px;height:18px;font-size:8px;border-radius:5px}
+.you-bingo-track .pip.lit{color:#2a1c00}
+
+/* ── Your boards ── */
+.you-section{width:100%;max-width:680px;display:flex;flex-direction:column;align-items:center;gap:7px}
+.you-header{display:flex;align-items:center;gap:9px}
+.you-name{font-family:var(--fh);font-size:10px;letter-spacing:1px}
+.boards-row{display:flex;gap:12px;flex-wrap:nowrap;justify-content:center;overflow-x:auto;padding-bottom:4px;width:100%;max-width:680px}
+.board-col{display:flex;flex-direction:column;align-items:center;gap:5px}
+.board-lbl{font-family:var(--fh);font-size:8.5px;letter-spacing:1.5px;color:var(--text2)}
+
+/* Bingo grid: 5 column-letter headers + 25 cells */
+.bingo-grid-wrap{display:flex;flex-direction:column;gap:3px}
+.bingo-col-hdrs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.bcol-hdr{height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:9px;font-weight:900;color:#fff}
+.bingo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--glass);border:1px solid var(--glass-b);border-radius:11px;padding:7px}
+.bingo-cell{width:40px;height:40px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:13px;font-weight:700;color:var(--text);cursor:pointer;transition:all .15s;position:relative;border:1.5px solid transparent}
+.bingo-cell:hover:not(.struck):not(.free){border-color:rgba(255,255,255,.15)}
+.bingo-cell.struck{color:#fff;opacity:.95}
+.bingo-cell.struck::after{content:'✓';position:absolute;font-size:7px;top:2px;right:3px;opacity:.65;font-family:var(--fh)}
+.bingo-cell.free{cursor:default;font-family:var(--fh);font-size:7px;letter-spacing:.5px}
+.bingo-cell.win-line{animation:wPulse .55s ease infinite}
+@keyframes wPulse{0%,100%{box-shadow:0 0 0 rgba(16,185,129,0)}50%{box-shadow:0 0 14px rgba(16,185,129,.85)}}
+
+/* Board stamp */
+.board-col{position:relative}
+.board-stamp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:20;pointer-events:none;border-radius:12px;background:rgba(10,10,12,.18)}
+.stamp-text{font-family:var(--fh);font-size:clamp(18px,4.5vw,24px);font-weight:900;padding:7px 16px;border-radius:10px;letter-spacing:3px;transform:rotate(-18deg);animation:stampIn .5s cubic-bezier(.175,.885,.32,1.275) forwards}
+@keyframes stampIn{0%{transform:rotate(-18deg) scale(3);opacity:0}65%{transform:rotate(-18deg) scale(.92);opacity:1}100%{transform:rotate(-18deg) scale(1);opacity:.92}}
+
+/* CPU seat position crown */
+.pos-crown{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:15px}
+
+/* Podium result rows */
+.res-podium{display:flex;flex-direction:column;gap:7px;width:100%;margin:10px 0}
+.podium-row{display:flex;align-items:center;gap:10px;padding:9px 13px;border-radius:11px;background:var(--glass);border:1px solid var(--glass-b)}
+.podium-row.pos1{border-color:var(--gold);background:rgba(245,158,11,.07)}
+.podium-row.pos2{border-color:#9ca3af;background:rgba(156,163,175,.05)}
+.podium-row.pos3{border-color:#92400e;background:rgba(146,64,14,.05)}
+.podium-medal{font-size:20px;flex-shrink:0}
+.podium-name{font-family:var(--fh);font-size:10px;flex:1;letter-spacing:.5px}
+.podium-info{font-family:var(--fm);font-size:10px;color:var(--text2)}
+
+/* ── Result overlay ── */
+#result-overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(10,10,12,.88);backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .3s}
+#result-overlay.show{opacity:1;pointer-events:all}
+.result-card{background:var(--surface);border:1px solid var(--glass-b);border-radius:20px;padding:28px;text-align:center;max-width:310px;width:90%;animation:popIn .35s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes popIn{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+.res-icon{font-size:52px;margin-bottom:5px}
+.res-title{font-family:var(--fh);font-size:19px;font-weight:900;margin-bottom:5px}
+.res-title.win{color:var(--green)}
+.res-title.lose{color:var(--red)}
+.res-sub{font-size:12px;color:var(--text2);margin-bottom:16px}
+.res-actions{display:flex;gap:8px}
+.btn-primary{flex:1;background:linear-gradient(135deg,var(--accent),var(--a2));border:none;border-radius:11px;padding:12px 16px;font-family:var(--fh);font-size:10px;font-weight:700;letter-spacing:1.5px;color:#fff;cursor:pointer;transition:all .2s}
+.btn-primary:hover{transform:translateY(-2px)}
+.btn-primary:active{transform:scale(.97)}
+.btn-secondary{flex:1;background:var(--glass);border:1px solid var(--glass-b);border-radius:11px;padding:12px 16px;font-family:var(--fh);font-size:9px;letter-spacing:1px;color:var(--text2);cursor:pointer;transition:all .2s}
+.btn-secondary:hover{background:var(--glass-b);color:var(--text)}
+
+#confetti-container{position:fixed;inset:0;z-index:9000;pointer-events:none;overflow:hidden}
+.cp{position:absolute;animation:cfFall linear forwards}
+@keyframes cfFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:2px}
+
+@media(max-width:480px){
+  .bingo-cell{width:32px;height:32px;font-size:10px}
+  .bingo-grid{padding:5px;gap:3px}
+  .ball{width:48px;height:48px;font-size:12px}
+  .boards-row{gap:8px}
+}
+@media(max-width:360px){
+  .bingo-cell{width:27px;height:27px;font-size:9px}
+  .bingo-grid{padding:4px;gap:2px}
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="confetti-container"></div>
+
+<div id="result-overlay">
+  <div class="result-card">
+    <div class="res-icon" id="res-icon">🏆</div>
+    <div class="res-title win" id="res-title">GAME OVER</div>
+    <div class="res-podium" id="res-podium"></div>
+    <div class="res-actions">
+      <button class="btn-secondary" onclick="backToMenu()">MENU</button>
+      <button class="btn-primary" onclick="goToFill()">PLAY AGAIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MENU ═══ -->
+<div id="menu-screen" class="screen active">
+  <a href="index.html" class="home-back">← Home</a>
+  <div style="text-align:center">
+    <span class="logo-icon">🎱</span>
+    <div class="logo-title">BINGO BLITZ</div>
+    <div class="logo-sub">A Table Of Four</div>
+  </div>
+  <div class="mode-grid">
+    <div class="mode-card" onclick="selectMode('b25')">
+      <span class="mode-icon">🔢</span>
+      <div>
+        <div class="mode-name">BINGO 25 · ONE BOARD</div>
+        <div class="mode-desc">Numbers 1–25, one board each. Players take turns calling a number that helps them. <b>You</b> strike your board by tapping. Win by completing 5 lines (B·I·N·G·O).</div>
+      </div>
+    </div>
+    <div class="mode-card" onclick="selectMode('b75')">
+      <span class="mode-icon">🎰</span>
+      <div>
+        <div class="mode-name">BINGO 75 · TWO BOARDS</div>
+        <div class="mode-desc">Numbers 1–75 across B·I·N·G·O columns. Auto-rolls every 5 seconds. Strike both boards — first line on both wins.</div>
+      </div>
+    </div>
+  </div>
+  <div class="stats-bar">
+    <div class="stat-item"><div class="stat-val" id="m-wins">0</div><div class="stat-lbl">Wins</div></div>
+    <div class="stat-item"><div class="stat-val" id="m-losses">0</div><div class="stat-lbl">Losses</div></div>
+    <div class="stat-item"><div class="stat-val" id="m-rate">0%</div><div class="stat-lbl">Win Rate</div></div>
+  </div>
+  <div class="toggle-row">
+    <button class="tog" id="sound-btn" onclick="toggleSound()">🔇 Sound</button>
+    <button class="tog" id="voice-btn" onclick="toggleVoice()">🔇 Voice</button>
+  </div>
+</div>
+
+<!-- ═══ FILL SCREEN ═══ -->
+<div id="fill-screen" class="screen">
+  <div class="fill-title" id="fill-title">FILL YOUR BOARD</div>
+  <div class="fill-sub" id="fill-sub">Tap a number, then tap a cell to place it.</div>
+  <!-- B75: card preview shown here -->
+  <div id="fill-b75-wrap" class="card-preview" style="display:none"></div>
+  <!-- B25: pool + grid -->
+  <div id="fill-b25-wrap" style="display:contents">
+    <div class="pool-row" id="pool-row"></div>
+    <div class="fill-grid" id="fill-grid"></div>
+  </div>
+  <div class="fill-actions">
+    <button class="btn-secondary" style="flex:1" id="fill-auto-btn" onclick="autoFillBoard()">🎲 RANDOMISE</button>
+    <button class="btn-primary" style="flex:1" id="fill-confirm-btn" onclick="confirmFill()" disabled>SIT DOWN ▶</button>
+  </div>
+</div>
+
+<!-- ═══ GAME SCREEN ═══ -->
+<div id="game-screen" class="screen">
+  <div class="game-topbar">
+    <div class="back-btn" onclick="confirmQuit()">←</div>
+    <div class="mode-pill" id="mode-pill">BINGO 25</div>
+    <div class="draw-count" id="draw-count-wrap">Called <span id="draw-count">0</span>/25</div>
+  </div>
+
+  <!-- 3 CPU seats + felt -->
+  <div class="table-wrap">
+    <div class="cpu-seat" id="cpu-seat-1"></div>
+    <div class="cpu-seat" id="cpu-seat-2"></div>
+    <div class="cpu-seat" id="cpu-seat-3"></div>
+    <div class="felt">
+      <div class="ball-row">
+        <div class="ball-wrap">
+          <div class="ball empty" id="ball-display">?</div>
+          <div class="ball-label" id="ball-label" style="color:var(--a2)">—</div>
+        </div>
+        <div class="recent-col">
+          <div class="recent-lbl">Last Called</div>
+          <div class="recent-chips" id="recent-chips"></div>
+        </div>
+      </div>
+      <div class="cdown-text" id="cdown-text">Get ready...</div>
+    </div>
+  </div>
+
+  <!-- Bingo 25: chat bubbles -->
+  <div class="chat-area" id="chat-area" style="display:none"></div>
+
+  <!-- Bingo 25: your call input -->
+  <div class="call-area" id="call-area">
+    <div class="call-prompt">YOUR CALL:</div>
+    <input type="number" class="call-input" id="call-input" min="1" max="25" placeholder="1–25"
+      onkeydown="if(event.key==='Enter')playerCall()">
+    <button class="call-btn" onclick="playerCall()">CALL IT</button>
+  </div>
+
+  <div class="status-line" id="status-line">Waiting...</div>
+
+  <!-- Your bingo progress (Bingo 25 only) -->
+  <div id="you-bingo-wrap" style="display:none">
+    <div class="you-bingo-track" id="you-bingo-track">
+      <span>Lines:</span>
+      <div class="pip" id="pip0">B</div>
+      <div class="pip" id="pip1">I</div>
+      <div class="pip" id="pip2">N</div>
+      <div class="pip" id="pip3">G</div>
+      <div class="pip" id="pip4">O</div>
+    </div>
+  </div>
+
+  <!-- Your boards -->
+  <div class="you-section">
+    <div class="you-header">
+      <span style="font-size:15px">🧑</span>
+      <span class="you-name">YOU</span>
+    </div>
+    <div class="boards-row" id="boards-row"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══ BINGO COLUMN DEFINITIONS ═══ */
+const COLS = [
+  { l:'B', color:'#22c55e', min:1,  max:15, free:false },
+  { l:'I', color:'#f59e0b', min:16, max:30, free:false },
+  { l:'N', color:'#ec4899', min:31, max:45, free:true  },
+  { l:'G', color:'#3b82f6', min:46, max:60, free:false },
+  { l:'O', color:'#a855f7', min:61, max:75, free:false }
+];
+const FREE_IDX = 12; // center cell (row 2, col 2)
+
+function colForNum(n){ return COLS.findIndex(c=>n>=c.min&&n<=c.max); }
+function ballLabel(n){ const c=colForNum(n); return c>=0?`${COLS[c].l}·${n}`:String(n); }
+function ballColor(n){ const c=colForNum(n); return c>=0?COLS[c].color:'var(--a2)'; }
+
+/* ═══ WIN LINES ═══ */
+const LINES=[];
+for(let r=0;r<5;r++) LINES.push([0,1,2,3,4].map(c=>r*5+c));
+for(let c=0;c<5;c++) LINES.push([0,1,2,3,4].map(r=>r*5+c));
+LINES.push([0,6,12,18,24]);
+LINES.push([4,8,12,16,20]);
+function findWinLine(struck){ return LINES.find(l=>l.every(i=>struck[i]))||null; }
+function countLines(struck){ return LINES.filter(l=>l.every(i=>struck[i])).length; }
+
+/* ═══ STATE ═══ */
+const G={
+  mode:'b25',
+  players:[],
+  pool:[], drawn:[], drawnSet:new Set(), current:null,
+  autoTimer:null, cdTimer:null, cdVal:5,
+  turnOrder:[], turnIdx:0,
+  gameOver:false,
+  positions:[],          // [{player, callCount, pos}] filled as players win
+  snd:false, voice:false,
+  fill:{ board:new Array(25).fill(null), selected:null, b75Cards:[] }
+};
+const CPU_NAMES=['Mira','Theo','Jules'];
+
+/* ═══ STATS ═══ */
+function loadStats(){try{return JSON.parse(localStorage.getItem('bingo_v4')||'{}')}catch{return{}}}
+function saveStats(s){localStorage.setItem('bingo_v4',JSON.stringify(s))}
+function recordResult(won){const s=loadStats();s.wins=(s.wins||0)+(won?1:0);s.losses=(s.losses||0)+(won?0:1);saveStats(s);return s;}
+function refreshMenuStats(){
+  const s=loadStats();
+  document.getElementById('m-wins').textContent=s.wins||0;
+  document.getElementById('m-losses').textContent=s.losses||0;
+  const t=(s.wins||0)+(s.losses||0);
+  document.getElementById('m-rate').textContent=t?Math.round((s.wins||0)/t*100)+'%':'0%';
+}
+
+/* ═══ AUDIO + VOICE ═══ */
+let _actx=null;
+function getAC(){return _actx||(_actx=new(window.AudioContext||window.webkitAudioContext)())}
+function tone(f,type,dur,vol=.28,delay=0){
+  if(!G.snd)return;
+  try{const c=getAC(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type=type;o.frequency.setValueAtTime(f,c.currentTime+delay);g.gain.setValueAtTime(vol,c.currentTime+delay);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+delay+dur);o.start(c.currentTime+delay);o.stop(c.currentTime+delay+dur);}catch(_){}
+}
+const SFX={
+  draw:()=>{tone(500,'sine',.1,.22);tone(720,'sine',.08,.18,.06);},
+  strike:()=>tone(880,'square',.07,.18),
+  cpu:()=>tone(330,'square',.06,.1),
+  click:()=>tone(800,'square',.05,.1),
+  win:()=>{[523,659,784,1047,1318].forEach((f,i)=>tone(f,'sine',.3,.28,i*.09));},
+  lose:()=>{tone(220,'sawtooth',.3,.28);tone(160,'sawtooth',.3,.18,.2);},
+  nope:()=>tone(200,'sawtooth',.12,.2),
+};
+function speak(txt){
+  if(!G.voice)return;
+  try{if(!('speechSynthesis' in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(txt));u.rate=0.9;u.pitch=1;u.volume=1;window.speechSynthesis.speak(u);}catch(_){}
+}
+
+/* ═══ BG ═══ */
+function initBG(){
+  const cv=document.getElementById('bg-canvas'),ctx=cv.getContext('2d');
+  let stars=[];
+  const resize=()=>{cv.width=innerWidth;cv.height=innerHeight;};
+  const mkStars=()=>{stars=[];for(let i=0;i<90;i++)stars.push({x:Math.random()*cv.width,y:Math.random()*cv.height,r:.5+Math.random()*1.2,o:.15+Math.random()*.5,t:Math.random()*Math.PI*2});};
+  const draw=()=>{ctx.clearRect(0,0,cv.width,cv.height);stars.forEach(s=>{s.t+=.018;const a=s.o*(.7+.3*Math.sin(s.t));ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.fill();});requestAnimationFrame(draw);};
+  resize();mkStars();draw();addEventListener('resize',()=>{resize();mkStars();});
+}
+
+/* ═══ NAV ═══ */
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='menu-screen')refreshMenuStats();}
+function stopAll(){if(G.autoTimer){clearTimeout(G.autoTimer);G.autoTimer=null;}if(G.cdTimer){clearInterval(G.cdTimer);G.cdTimer=null;}if('speechSynthesis' in window)window.speechSynthesis.cancel();}
+function backToMenu(){stopAll();document.getElementById('result-overlay').classList.remove('show');showScreen('menu-screen');}
+function confirmQuit(){if(confirm('Leave the table?')){stopAll();document.getElementById('result-overlay').classList.remove('show');showScreen('menu-screen');}}
+
+/* ═══ HELPERS ═══ */
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr;}
+function pick(arr,n){return shuffle([...arr]).slice(0,n);}
+function makeBoard(nums,preStrike=[]){const struck=new Array(25).fill(false);preStrike.forEach(i=>struck[i]=true);return{nums,struck};}
+
+/* ═══ GENERATE BINGO 75 CARD ═══ */
+function genB75Card(){
+  const nums=new Array(25);
+  COLS.forEach((col,c)=>{
+    const pool=[];for(let n=col.min;n<=col.max;n++)pool.push(n);
+    shuffle(pool);
+    let pi=0;
+    for(let r=0;r<5;r++){
+      const idx=r*5+c;
+      if(c===2&&r===2){nums[idx]=0;}  // 0 = FREE
+      else nums[idx]=pool[pi++];
+    }
+  });
+  return nums;
+}
+
+/* ═══ MODE SELECT ═══ */
+function selectMode(mode){G.mode=mode;goToFill();}
+
+function goToFill(){
+  document.getElementById('result-overlay').classList.remove('show');
+  G.fill={board:new Array(25).fill(null),selected:null,b75Cards:[]};
+
+  if(G.mode==='b25'){
+    document.getElementById('fill-b75-wrap').style.display='none';
+    document.getElementById('fill-b25-wrap').style.display='contents';
+    document.getElementById('fill-title').textContent='FILL YOUR BOARD';
+    document.getElementById('fill-sub').textContent='Tap a number from 1–25, then tap a cell to place it.';
+    document.getElementById('fill-auto-btn').textContent='🎲 AUTO-FILL';
+    renderPool25();
+    renderFillGrid25();
+    document.getElementById('fill-confirm-btn').disabled=true;
+  } else {
+    document.getElementById('fill-b25-wrap').style.display='none';
+    document.getElementById('fill-b75-wrap').style.display='flex';
+    document.getElementById('fill-title').textContent='YOUR BINGO 75 CARDS';
+    document.getElementById('fill-sub').textContent='B(1–15) · I(16–30) · N(31–45, FREE center) · G(46–60) · O(61–75). Cards are generated — click Randomise for new ones.';
+    document.getElementById('fill-auto-btn').textContent='🎲 RANDOMISE';
+    G.fill.b75Cards=[genB75Card(),genB75Card()];
+    renderB75Preview();
+    document.getElementById('fill-confirm-btn').disabled=false;
+  }
+  showScreen('fill-screen');
+}
+
+/* Bingo 25 fill */
+function renderPool25(){
+  const pr=document.getElementById('pool-row');pr.innerHTML='';
+  for(let n=1;n<=25;n++){
+    const used=G.fill.board.includes(n);
+    const d=document.createElement('div');
+    d.className='pool-num'+(used?' used':'')+(G.fill.selected===n?' sel':'');
+    d.textContent=n;
+    d.onclick=()=>{if(used)return;G.fill.selected=n;renderPool25();SFX.click();};
+    pr.appendChild(d);
+  }
+}
+function renderFillGrid25(){
+  const fg=document.getElementById('fill-grid');fg.innerHTML='';
+  G.fill.board.forEach((val,i)=>{
+    const c=document.createElement('div');
+    c.className='fill-cell'+(val!==null?' filled':'');
+    c.textContent=val!==null?val:'';
+    c.onclick=()=>{
+      if(val!==null){G.fill.board[i]=null;renderFillGrid25();renderPool25();SFX.click();checkFillOk();return;}
+      if(G.fill.selected===null)return;
+      G.fill.board[i]=G.fill.selected;G.fill.selected=null;renderFillGrid25();renderPool25();SFX.strike();checkFillOk();
+    };
+    fg.appendChild(c);
+  });
+}
+function checkFillOk(){document.getElementById('fill-confirm-btn').disabled=G.fill.board.includes(null);}
+
+/* Bingo 75 card preview */
+function renderB75Preview(){
+  const wrap=document.getElementById('fill-b75-wrap');wrap.innerHTML='';
+  G.fill.b75Cards.forEach((card,ci)=>{
+    const sec=document.createElement('div');sec.style.cssText='display:flex;flex-direction:column;gap:4px;align-items:center;';
+    const lbl=document.createElement('div');lbl.style.cssText=`font-family:var(--fh);font-size:9px;letter-spacing:1.5px;color:var(--text2);margin-bottom:2px`;lbl.textContent='BOARD '+(ci+1);
+    const hdr=document.createElement('div');hdr.className='card-header';
+    COLS.forEach(col=>{const h=document.createElement('div');h.className='col-hdr';h.style.background=col.color;h.textContent=col.l;hdr.appendChild(h);});
+    const grid=document.createElement('div');grid.className='card-grid';
+    card.forEach((num,i)=>{
+      const c=document.createElement('div');
+      const col=COLS[i%5];
+      if(num===0){c.className='card-cell free-cell';c.style.cssText=`background:${col.color}30;border:1.5px solid ${col.color}60;color:${col.color}`;c.textContent='FREE';}
+      else{c.className='card-cell';c.style.cssText=`background:${col.color}18;border:1.5px solid ${col.color}35;color:${col.color}`;c.textContent=num;}
+      grid.appendChild(c);
+    });
+    sec.appendChild(lbl);sec.appendChild(hdr);sec.appendChild(grid);
+    wrap.appendChild(sec);
+  });
+}
+function autoFillBoard(){
+  if(G.mode==='b25'){
+    const nums=shuffle([...Array(25)].map((_,i)=>i+1));
+    G.fill.board=nums;G.fill.selected=null;renderFillGrid25();renderPool25();checkFillOk();SFX.click();
+  } else {
+    G.fill.b75Cards=[genB75Card(),genB75Card()];renderB75Preview();SFX.click();
+  }
+}
+
+/* ═══ CONFIRM FILL → START GAME ═══ */
+function confirmFill(){
+  if(G.mode==='b25'&&G.fill.board.includes(null))return;
+
+  // You
+  const you={name:'You',isCPU:false,boards:[],lines:0,wonFlags:[false,false]};
+  if(G.mode==='b25'){
+    you.boards.push(makeBoard([...G.fill.board]));
+  } else {
+    G.fill.b75Cards.forEach(c=>you.boards.push(makeBoard([...c],[FREE_IDX])));
+  }
+
+  // CPUs
+  const cpus=CPU_NAMES.map(name=>{
+    const p={name,isCPU:true,boards:[],lines:0,wonFlags:[false,false]};
+    if(G.mode==='b25'){
+      p.boards.push(makeBoard(shuffle([...Array(25)].map((_,i)=>i+1))));
+    } else {
+      p.boards.push(makeBoard(genB75Card(),[FREE_IDX]));
+      p.boards.push(makeBoard(genB75Card(),[FREE_IDX]));
+    }
+    return p;
+  });
+
+  G.players=[you,...cpus];
+  startGame();
+}
+
+/* ═══ START GAME ═══ */
+function startGame(){
+  const maxNum=G.mode==='b25'?25:75;
+  G.pool=[...Array(maxNum)].map((_,i)=>i+1);
+  G.drawn=[];G.drawnSet=new Set();G.current=null;G.gameOver=false;G.positions=[];
+
+  document.getElementById('mode-pill').textContent=G.mode==='b25'?'BINGO 25':'BINGO 75';
+  document.getElementById('draw-count-wrap').innerHTML=`Called <span id="draw-count">0</span>/${maxNum}`;
+  document.getElementById('ball-display').textContent='?';
+  document.getElementById('ball-display').className='ball empty';
+  document.getElementById('ball-label').textContent='—';
+  document.getElementById('recent-chips').innerHTML='';
+  document.getElementById('status-line').textContent='';
+  document.getElementById('cdown-text').textContent='Get ready...';
+
+  // Mode-specific UI
+  const isB25=G.mode==='b25';
+  document.getElementById('chat-area').style.display=isB25?'flex':'none';
+  document.getElementById('chat-area').innerHTML='';
+  document.getElementById('you-bingo-wrap').style.display=isB25?'flex':'none';
+  // call input always starts hidden (shown only on your turn in b25)
+  document.getElementById('call-area').classList.remove('visible');
+
+  if(!isB25){
+    // Bingo 75: strike strikeable cells are highlighted after each call
+    // FREE center already struck in makeBoard
+  }
+
+  renderCpuSeats();
+  renderYourBoards();
+  showScreen('game-screen');
+
+  if(isB25){
+    // Random turn order, 7-second gaps between turns
+    G.turnOrder=shuffle([0,1,2,3]);G.turnIdx=0;
+    advanceTurn(true);
+  } else {
+    scheduleNextDraw();
+  }
+}
+
+/* ════════════════════════════════════════
+   BINGO 25 — TURN-BASED LOGIC
+   ════════════════════════════════════════ */
+function currentPIdx(){ return G.turnOrder[G.turnIdx%G.turnOrder.length]; }
+
+function advanceTurn(first){
+  if(!first) G.turnIdx++;
+  if(G.gameOver)return;
+  const pIdx=currentPIdx();
+  renderCpuSeats();renderYourBoards();
+
+  if(pIdx===0){
+    // Player's turn
+    document.getElementById('call-area').classList.add('visible');
+    document.getElementById('call-input').value='';
+    document.getElementById('call-input').focus();
+    document.getElementById('cdown-text').textContent='Your turn — call a number!';
+    document.getElementById('status-line').textContent='Type a number you want to call and press CALL IT.';
+  } else {
+    document.getElementById('call-area').classList.remove('visible');
+    const p=G.players[pIdx];
+    document.getElementById('cdown-text').textContent=`${p.name} is thinking...`;
+    document.getElementById('status-line').textContent='';
+    setTimeout(()=>{
+      if(G.gameOver)return;
+      const num=cpuBestCall(p);
+      processCall(num, pIdx);
+    }, 1200);
+  }
+}
+
+/* CPU picks the number not yet drawn that helps its own best in-progress line */
+function cpuBestCall(p){
+  const bd=p.boards[0];
+  let bestNum=-1,bestScore=-1;
+  for(let n=1;n<=25;n++){
+    if(G.drawnSet.has(n))continue;
+    const cellIdx=bd.nums.indexOf(n);
+    if(cellIdx===-1)continue;
+    const score=Math.max(...LINES.filter(l=>l.includes(cellIdx)).map(l=>l.filter(j=>bd.struck[j]).length));
+    if(score>bestScore){bestScore=score;bestNum=n;}
+  }
+  // fallback: pick any uncalled number
+  if(bestNum===-1){for(let n=1;n<=25;n++){if(!G.drawnSet.has(n)){bestNum=n;break;}}}
+  return bestNum;
+}
+
+function playerCall(){
+  if(G.gameOver||currentPIdx()!==0)return;
+  const val=parseInt(document.getElementById('call-input').value);
+  if(isNaN(val)||val<1||val>25){document.getElementById('status-line').textContent='Enter a number between 1 and 25.';return;}
+  if(G.drawnSet.has(val)){document.getElementById('status-line').textContent=`${val} was already called — pick another.`;SFX.nope();return;}
+  document.getElementById('call-area').classList.remove('visible');
+  processCall(val,0);
+}
+
+function processCall(num, callerIdx){
+  if(G.drawnSet.has(num)||G.gameOver)return;
+  G.drawn.push(num);G.drawnSet.add(num);G.current=num;
+  document.getElementById('draw-count').textContent=G.drawn.length;
+  SFX.draw();
+  // Bingo 25: just say the number; Bingo 75: say "B 4" etc.
+  speak(G.mode==='b75'?ballLabel(num):String(num));
+
+  // Ball display — Bingo 25 uses a neutral accent colour, no column tint
+  const ball=document.getElementById('ball-display');
+  ball.className='ball';ball.textContent=num;
+  const bc=G.mode==='b75'?ballColor(num):'var(--accent)';
+  ball.style.background=`radial-gradient(circle at 30% 28%, #fff, ${bc} 35%, ${bc}aa 100%)`;
+  ball.classList.remove('pop');void ball.offsetWidth;ball.classList.add('pop');
+  // Bingo 25: plain number label with accent colour
+  document.getElementById('ball-label').textContent=G.mode==='b75'?ballLabel(num):num;
+  document.getElementById('ball-label').style.color=G.mode==='b75'?ballColor(num):'var(--a2)';
+
+  // Add chip — plain for Bingo 25, coloured for Bingo 75
+  const rc=document.getElementById('recent-chips');
+  const chip=document.createElement('div');chip.className='chip';
+  if(G.mode==='b75'){chip.textContent=ballLabel(num);chip.style.borderColor=ballColor(num)+'60';chip.style.color=ballColor(num);}
+  else{chip.textContent=num;}
+  rc.insertBefore(chip,rc.firstChild);while(rc.children.length>6)rc.removeChild(rc.lastChild);
+
+  // Chat bubble (Bingo 25)
+  if(G.mode==='b25'){addBubble(num,callerIdx);}
+
+  // AUTO-MARK: when the PLAYER calls a number in Bingo 25, immediately
+  // strike it on their own board without requiring a tap.
+  if(G.mode==='b25'&&callerIdx===0){
+    const you=G.players[0];
+    const bd=you.boards[0];
+    const ci=bd.nums.indexOf(num);
+    if(ci!==-1&&!bd.struck[ci]){
+      bd.struck[ci]=true;
+      SFX.strike();
+      you.lines=countLines(bd.struck);
+      updateYouBingoTrack(you.lines);
+      if(you.lines>=5){awardPosition(0);}
+    }
+  }
+
+  // CPUs auto-strike their boards
+  G.players.forEach((p,pi)=>{
+    if(!p.isCPU)return;
+    p.boards.forEach(bd=>{
+      const i=bd.nums.indexOf(num);
+      if(i!==-1&&!bd.struck[i]){bd.struck[i]=true;SFX.cpu();}
+      p.lines=countLines(bd.struck);
+    });
+  });
+  renderCpuSeats();
+
+  // Check CPU wins (award positions, don't stop game immediately)
+  G.players.forEach((p,pi)=>{
+    if(!p.isCPU)return;
+    const won=G.mode==='b25'?(p.lines>=5):(p.boards.every(bd=>!!findWinLine(bd.struck)));
+    if(won) awardPosition(pi);
+  });
+
+  renderYourBoards();
+
+  if(G.mode==='b25'){
+    document.getElementById('status-line').textContent=`${num} called — tap any other numbers you have! Next turn in 3s.`;
+    startCountdown(3,()=>advanceTurn(false));
+  }
+}
+
+function startCountdown(sec, onDone){
+  G.cdVal=sec;
+  if(G.cdTimer)clearInterval(G.cdTimer);
+  G.cdTimer=setInterval(()=>{
+    G.cdVal--;
+    if(G.mode==='b25')document.getElementById('cdown-text').innerHTML=G.cdVal>0?`Next turn in <b>${G.cdVal}</b>s...`:`Moving on...`;
+    else document.getElementById('cdown-text').innerHTML=G.cdVal>0?`Next call in <b>${G.cdVal}</b>s...`:`Calling now...`;
+    if(G.cdVal<=0){clearInterval(G.cdTimer);G.cdTimer=null;onDone();}
+  },1000);
+}
+
+function addBubble(num, pIdx){
+  const area=document.getElementById('chat-area');
+  const isYou=pIdx===0;
+  const p=G.players[pIdx];
+  const row=document.createElement('div');row.className='bubble-row'+(isYou?' you':'');
+  const av=document.createElement('div');av.className='bubble-avatar';av.textContent=isYou?'🧑':'🧑‍💻';
+  const bub=document.createElement('div');bub.className='bubble '+(isYou?'you-b':'cpu');
+  bub.innerHTML=`${isYou?'You':p.name}<span class="num">${num}</span>`;
+  row.appendChild(av);row.appendChild(bub);
+  area.appendChild(row);
+  area.scrollTop=area.scrollHeight;
+}
+
+/* ════════════════════════════════════════
+   BINGO 75 — AUTO-ROLL
+   ════════════════════════════════════════ */
+function scheduleNextDraw(){
+  if(G.gameOver)return;
+  document.getElementById('cdown-text').innerHTML=`Next call in <b>5</b>s...`;
+  startCountdown(5,drawB75);
+}
+
+function drawB75(){
+  if(G.gameOver||G.pool.length===0)return;
+  const idx=Math.floor(Math.random()*G.pool.length);
+  const num=G.pool.splice(idx,1)[0];
+  processCall75(num);
+}
+
+function processCall75(num){
+  G.drawn.push(num);G.drawnSet.add(num);G.current=num;
+  document.getElementById('draw-count').textContent=G.drawn.length;
+  SFX.draw();
+  speak(ballLabel(num));
+
+  // Ball
+  const ball=document.getElementById('ball-display');
+  ball.className='ball';ball.textContent=num;
+  ball.style.background=`radial-gradient(circle at 30% 28%, #fff, ${ballColor(num)} 35%, ${ballColor(num)}aa 100%)`;
+  ball.classList.remove('pop');void ball.offsetWidth;ball.classList.add('pop');
+  document.getElementById('ball-label').textContent=ballLabel(num);
+  document.getElementById('ball-label').style.color=ballColor(num);
+
+  // Chips (show label like "B·4")
+  const rc=document.getElementById('recent-chips');
+  const chip=document.createElement('div');chip.className='chip';
+  chip.textContent=ballLabel(num);chip.style.borderColor=ballColor(num)+'60';chip.style.color=ballColor(num);
+  rc.insertBefore(chip,rc.firstChild);while(rc.children.length>6)rc.removeChild(rc.lastChild);
+
+  document.getElementById('status-line').textContent=`${ballLabel(num)} — tap it on your board if you have it!`;
+
+  // CPU auto-strike
+  G.players.forEach(p=>{
+    if(!p.isCPU)return;
+    p.boards.forEach((bd,bi)=>{
+      const i=bd.nums.indexOf(num);
+      if(i!==-1&&!bd.struck[i]){bd.struck[i]=true;SFX.cpu();}
+    });
+  });
+  renderCpuSeats();
+
+  G.players.forEach((p,pi)=>{
+    if(!p.isCPU)return;
+    if(p.boards.every(bd=>!!findWinLine(bd.struck))) awardPosition(pi);
+  });
+
+  renderYourBoards();
+  if(G.pool.length===0){document.getElementById('cdown-text').textContent='All numbers called.';return;}
+  scheduleNextDraw();
+}
+
+/* ════════════════════════════════════════
+   PLAYER STRIKES — manual tap only
+   The bug fix: drawnSet tracks ALL called numbers,
+   so the player can strike any number that has been
+   called at any point, not just the most recent one.
+   ════════════════════════════════════════ */
+function onCellClick(bIdx, cellIdx){
+  if(G.gameOver)return;
+  const you=G.players[0];
+  const bd=you.boards[bIdx];
+  if(bd.struck[cellIdx])return;
+  const num=bd.nums[cellIdx];
+  if(num===0)return;
+
+  if(!G.drawnSet.has(num)){
+    SFX.nope();
+    document.getElementById('status-line').textContent=`${G.mode==='b75'?ballLabel(num):num} hasn't been called yet — keep searching!`;
+    return;
+  }
+
+  bd.struck[cellIdx]=true;
+  SFX.strike();
+
+  if(G.mode==='b25'){
+    you.lines=countLines(bd.struck);
+    updateYouBingoTrack(you.lines);
+    if(you.lines>=5) awardPosition(0);
+  } else {
+    // Check if this board just got its first (or only) complete line
+    const justWon=!you.wonFlags[bIdx]&&!!findWinLine(bd.struck);
+    if(justWon){
+      you.wonFlags[bIdx]=true;
+      stampBoard(bIdx); // stamp animation on this board
+    }
+    if(you.wonFlags[0]&&you.wonFlags[1]) awardPosition(0);
+    else if(you.wonFlags.some(w=>w)){
+      document.getElementById('status-line').textContent='One board done — complete the other too!';
+    }
+  }
+  renderYourBoards();
+}
+
+/* ════════════════════════════════════════
+   POSITIONS — track 1st, 2nd, 3rd
+   Game ends after 3 players have placed
+   ════════════════════════════════════════ */
+function awardPosition(playerIdx){
+  // Already placed?
+  if(G.positions.some(p=>p.playerIdx===playerIdx))return;
+  const pos=G.positions.length+1;
+  G.positions.push({playerIdx, pos, callCount:G.drawn.length});
+
+  const p=G.players[playerIdx];
+  if(playerIdx===0){
+    // Stamp all completed boards
+    p.boards.forEach((_,bi)=>{ if(p.wonFlags[bi]||G.mode==='b25') stampBoard(bi); });
+  }
+
+  // Update CPU seat to show crown
+  if(playerIdx>0) renderCpuSeats();
+
+  if(G.positions.length>=3||G.pool.length===0){
+    // Fill in remaining players as DNF
+    G.players.forEach((_,i)=>{
+      if(!G.positions.some(p=>p.playerIdx===i)) G.positions.push({playerIdx:i,pos:G.positions.length+1,callCount:G.drawn.length,dnf:true});
+    });
+    finishGame();
+  }
+}
+
+function stampBoard(bIdx){
+  // Show stamp overlay on the player's board column
+  setTimeout(()=>{
+    const cols=document.getElementById('boards-row')?.querySelectorAll('.board-col');
+    if(!cols||!cols[bIdx])return;
+    if(cols[bIdx].querySelector('.board-stamp'))return; // already stamped
+    const pos=G.positions.findIndex(p=>p.playerIdx===0)+1||1;
+    const medals=['🥇','🥈','🥉'];
+    const colors=['#22c55e','#9ca3af','#b45309'];
+    const medal=medals[pos-1]||'✅';
+    const color=colors[pos-1]||'#22c55e';
+    const stamp=document.createElement('div');stamp.className='board-stamp';
+    stamp.innerHTML=`<div class="stamp-text" style="color:${color};border:3px solid ${color};text-shadow:0 0 14px ${color}66">${medal} BINGO!</div>`;
+    cols[bIdx].appendChild(stamp);
+  },80);
+}
+
+/* ════════════════════════════════════════
+   RENDER
+   ════════════════════════════════════════ */
+function renderCpuSeats(){
+  const medals=['🥇','🥈','🥉','4️⃣'];
+  for(let i=0;i<3;i++){
+    const p=G.players[i+1];
+    const seat=document.getElementById('cpu-seat-'+(i+1));
+    const isActive=G.mode==='b25'&&!G.gameOver&&currentPIdx()===i+1;
+    const posEntry=G.positions.find(p=>p.playerIdx===i+1);
+    seat.className='cpu-seat'+(posEntry?' won':'')+(isActive?' active':'');
+    let dotsHtml='';
+    p.boards.forEach(bd=>{
+      dotsHtml+=`<div class="dot-grid">${bd.struck.map(on=>`<div class="dot${on?' on':''}"></div>`).join('')}</div>`;
+    });
+    const lines=G.mode==='b25'?p.lines:0;
+    const pipsHtml=G.mode==='b25'?`<div class="bingo-pips">${['B','I','N','G','O'].map((l,li)=>`<div class="pip${li<lines?' lit':''}">${l}</div>`).join('')}</div>`:'';
+    const crown=posEntry?`<div class="pos-crown">${medals[posEntry.pos-1]||'✅'}</div>`:'';
+    seat.innerHTML=`${crown}
+      <div class="cpu-avatar">🧑‍💻</div>
+      <div class="cpu-name">${p.name}${isActive?' ◉':''}</div>
+      <div class="cpu-boards">${dotsHtml}</div>${pipsHtml}`;
+  }
+}
+
+function updateYouBingoTrack(lines){
+  for(let i=0;i<5;i++){
+    const el=document.getElementById('pip'+i);
+    if(el)el.className='pip'+(i<lines?' lit':'');
+  }
+}
+
+function renderYourBoards(){
+  const row=document.getElementById('boards-row');row.innerHTML='';
+  const you=G.players[0];
+  you.boards.forEach((bd,bIdx)=>{
+    const col=document.createElement('div');col.className='board-col';
+    const lbl=document.createElement('div');lbl.className='board-lbl';
+    lbl.textContent=you.boards.length>1?`BOARD ${bIdx+1}`:'YOUR BOARD';
+    col.appendChild(lbl);
+
+    const wrap=document.createElement('div');wrap.className='bingo-grid-wrap';
+    if(G.mode==='b75'){
+      const hdrs=document.createElement('div');hdrs.className='bingo-col-hdrs';
+      COLS.forEach(c=>{const h=document.createElement('div');h.className='bcol-hdr';h.style.background=c.color;h.textContent=c.l;hdrs.appendChild(h);});
+      wrap.appendChild(hdrs);
+    }
+
+    const grid=document.createElement('div');grid.className='bingo-grid';
+    bd.nums.forEach((num,ci)=>{
+      const cell=document.createElement('div');
+      // Bingo 25: uniform colour, no column differentiation
+      const colColor=G.mode==='b75'?COLS[ci%5].color:'#3b82f6';
+      const isFree=num===0,isStruck=bd.struck[ci];
+      let cls='bingo-cell';
+      if(isFree) cls+=' struck free';
+      else if(isStruck) cls+=' struck';
+      cell.className=cls;
+      if(isFree){cell.style.cssText=`background:${colColor};color:#fff;`;cell.textContent='FREE';}
+      else if(isStruck){cell.style.cssText=`background:linear-gradient(135deg,${colColor}dd,${colColor}88);color:#fff;`;cell.textContent=num;}
+      else{cell.style.cssText=`background:${colColor}18;color:${colColor};`;cell.textContent=num;}
+      cell.onclick=()=>onCellClick(bIdx,ci);
+      grid.appendChild(cell);
+    });
+    wrap.appendChild(grid);col.appendChild(wrap);
+    // Re-apply stamp if this board was already completed
+    if(you.wonFlags[bIdx]){
+      const posEntry=G.positions.find(p=>p.playerIdx===0);
+      const medals=['🥇','🥈','🥉'];const colors=['#22c55e','#9ca3af','#b45309'];
+      const pos=posEntry?posEntry.pos:1;
+      const stamp=document.createElement('div');stamp.className='board-stamp';
+      stamp.innerHTML=`<div class="stamp-text" style="color:${colors[pos-1]||'#22c55e'};border:3px solid ${colors[pos-1]||'#22c55e'}">${medals[pos-1]||'✅'} BINGO!</div>`;
+      col.appendChild(stamp);
+    }
+    row.appendChild(col);
+  });
+}
+
+/* ═══ FINISH GAME — show podium ═══ */
+function finishGame(){
+  if(G.gameOver)return;
+  G.gameOver=true;stopAll();
+  const medals=['🥇','🥈','🥉','4️⃣'];
+  const classes=['pos1','pos2','pos3',''];
+  const playerWon=G.positions.length>0&&G.positions[0].playerIdx===0;
+
+  if(playerWon){recordResult(true);SFX.win();confetti();}
+  else{recordResult(false);SFX.lose();}
+
+  document.getElementById('res-icon').textContent=playerWon?'🏆':'🎯';
+  document.getElementById('res-title').className='res-title '+(playerWon?'win':'lose');
+  document.getElementById('res-title').textContent=playerWon?'BINGO! YOU WIN!':'GAME OVER';
+
+  const podium=document.getElementById('res-podium');podium.innerHTML='';
+  G.positions.slice(0,4).forEach(entry=>{
+    const p=G.players[entry.playerIdx];
+    const row=document.createElement('div');
+    row.className='podium-row '+(classes[entry.pos-1]||'');
+    row.innerHTML=`<span class="podium-medal">${medals[entry.pos-1]||'—'}</span>
+      <span class="podium-name">${p.name==='You'?'YOU 🧑':p.name}</span>
+      <span class="podium-info">${entry.dnf?'—':entry.callCount+' calls'}</span>`;
+    podium.appendChild(row);
+  });
+  document.getElementById('result-overlay').classList.add('show');
+}
+
+/* ═══ SOUND / VOICE TOGGLES ═══ */
+function toggleSound(){G.snd=!G.snd;const b=document.getElementById('sound-btn');b.textContent=G.snd?'🔊 Sound':'🔇 Sound';b.className='tog'+(G.snd?' on':'');if(G.snd)getAC();}
+function toggleVoice(){G.voice=!G.voice;const b=document.getElementById('voice-btn');b.textContent=G.voice?'🗣️ Voice':'🔇 Voice';b.className='tog'+(G.voice?' on':'');if(G.voice&&'speechSynthesis' in window){const u=new SpeechSynthesisUtterance('Voice on');window.speechSynthesis.speak(u);}}
+
+function confetti(){
+  const c=document.getElementById('confetti-container'),cols=['#3b82f6','#60a5fa','#f59e0b','#10b981','#ef4444','#fff','#a855f7','#22c55e'];
+  for(let i=0;i<90;i++)setTimeout(()=>{const p=document.createElement('div');p.className='cp';const col=cols[i%cols.length],w=6+Math.random()*10,dur=1.5+Math.random()*2.5;p.style.cssText=`left:${Math.random()*100}%;background:${col};width:${w}px;height:${w}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${dur}s;animation-delay:${Math.random()*.4}s;`;c.appendChild(p);setTimeout(()=>p.remove(),4000);},i*20);
+}
+
+initBG();refreshMenuStats();
+</script>
+</body>
+</html>

@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Stopwatch Snap ⏱️</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Exo+2:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0c;--surface:#141417;--surface2:#1c1c20;
+  --accent:#3b82f6;--accent2:#60a5fa;
+  --gold:#f59e0b;--green:#10b981;--red:#ef4444;
+  --text:#e8e8ec;--text2:#7a7a85;
+  --glass:rgba(255,255,255,0.035);--glass-b:rgba(255,255,255,0.08);
+  --radius:16px;--fh:'Orbitron',monospace;--fb:'Exo 2',sans-serif;--fled:'Share Tech Mono',monospace;
+  --led:#39ff6a;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:var(--fb);background:var(--bg);color:var(--text);overflow:hidden}
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+.screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;overflow-y:auto;padding:20px;opacity:0;pointer-events:none;transition:opacity .3s ease}
+.screen.active{opacity:1;pointer-events:all}
+
+/* ── MENU ── */
+#menu-screen{justify-content:center;gap:20px}
+.logo-icon{font-size:52px;display:block;filter:drop-shadow(0 0 18px var(--accent));animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.logo-title{font-family:var(--fh);font-size:clamp(26px,8vw,44px);font-weight:900;background:linear-gradient(135deg,var(--accent2),var(--accent2),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:3px;text-align:center}
+.logo-sub{font-size:12px;color:var(--text2);letter-spacing:5px;text-transform:uppercase;margin-top:4px;text-align:center}
+.mode-grid{display:grid;grid-template-columns:1fr;gap:12px;width:100%;max-width:380px}
+.mode-card{background:var(--glass);border:1px solid var(--glass-b);border-radius:var(--radius);padding:20px;cursor:pointer;transition:all .2s;text-align:left;position:relative;overflow:hidden;display:flex;align-items:center;gap:16px}
+.mode-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--ca,var(--accent)),var(--cb,var(--accent2)));opacity:0;transition:opacity .2s}
+.mode-card:hover::before,.mode-card:active::before{opacity:.15}
+.mode-card:active{transform:scale(.97)}
+.card-icon{font-size:34px;flex-shrink:0}
+.card-name{font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1.5px}
+.card-desc{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.4}
+.stats-bar{display:flex;gap:16px;background:var(--glass);border:1px solid var(--glass-b);border-radius:12px;padding:12px 20px;width:100%;max-width:380px}
+.stat-item{flex:1;text-align:center}
+.stat-val{font-family:var(--fh);font-size:18px;font-weight:700;color:var(--accent2)}
+.stat-lbl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.sound-toggle{background:var(--glass);border:1px solid var(--glass-b);border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--fb);font-size:13px;color:var(--text2);transition:all .2s}
+.sound-toggle.on{color:var(--accent2);border-color:var(--accent2)}
+.home-back{position:absolute;top:20px;left:20px;background:var(--glass);border:1px solid var(--glass-b);border-radius:10px;padding:8px 14px;font-family:var(--fh);font-size:10px;color:var(--text2);cursor:pointer;text-decoration:none;transition:all .2s;z-index:20}
+.home-back:hover{background:var(--glass-b);color:var(--text)}
+
+/* ── GAME SCREEN ── */
+#game-screen{justify-content:center;gap:22px;padding:16px}
+.game-topbar{position:absolute;top:20px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:center}
+.back-btn{width:40px;height:40px;background:var(--glass);border:1px solid var(--glass-b);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text);transition:all .2s}
+.back-btn:hover{background:var(--glass-b)}
+.round-badge{background:var(--glass);border:1px solid var(--glass-b);border-radius:8px;padding:7px 14px;font-family:var(--fh);font-size:10px;letter-spacing:1.5px;color:var(--text2)}
+.round-badge span{color:var(--gold);font-weight:700}
+
+.target-display{text-align:center;min-height:54px}
+.target-lbl{font-family:var(--fh);font-size:10px;letter-spacing:3px;color:var(--text2);text-transform:uppercase;margin-bottom:6px}
+.target-val{font-family:var(--fled);font-size:38px;color:var(--gold);text-shadow:0 0 14px rgba(245,158,11,.6);letter-spacing:2px}
+
+/* The stopwatch unit itself: black rectangular body, green LED screen */
+.watch-body{
+  background:#0c0c0e;
+  border:3px solid #232328;
+  border-radius:14px;
+  padding:26px 30px;
+  box-shadow:0 20px 50px -10px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.04);
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+  position:relative;
+}
+.watch-body::before{
+  content:'';position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+  width:46px;height:16px;background:#1a1a1e;border-radius:4px 4px 0 0;
+}
+.led-screen{
+  background:#021505;
+  border:2px solid #0a0a0a;
+  border-radius:10px;
+  padding:18px 26px;
+  box-shadow:inset 0 2px 12px rgba(0,0,0,.8);
+  min-width:240px;
+  text-align:center;
+}
+.led-text{
+  font-family:var(--fled);
+  font-size:clamp(46px,12vw,64px);
+  color:var(--led);
+  text-shadow:0 0 8px rgba(57,255,106,.7),0 0 18px rgba(57,255,106,.4);
+  letter-spacing:4px;
+  line-height:1;
+}
+.led-text.hidden-val{ color:#0d4a23; text-shadow:0 0 6px rgba(13,74,35,.5); }
+.led-text.dim{opacity:.25}
+.led-status{font-family:var(--fled);font-size:11px;color:var(--led);opacity:.65;letter-spacing:3px;text-transform:uppercase;margin-top:6px}
+
+.watch-btn-row{display:flex;gap:14px}
+.watch-btn{
+  width:64px;height:64px;border-radius:50%;border:none;cursor:pointer;
+  font-family:var(--fh);font-size:10px;font-weight:700;letter-spacing:1px;color:#fff;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+  box-shadow:0 6px 0 rgba(0,0,0,.4), 0 8px 20px rgba(0,0,0,.5);
+}
+.watch-btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.4),0 4px 10px rgba(0,0,0,.5)}
+.watch-btn.start{background:radial-gradient(circle at 35% 30%,#22c55e,#0f7a3a)}
+.watch-btn.stop{background:radial-gradient(circle at 35% 30%,#ef4444,#8f1f1f)}
+.watch-btn:disabled{opacity:.3;cursor:not-allowed;box-shadow:none}
+.watch-btn:disabled:active{transform:none}
+
+/* Guess input UI */
+.guess-panel{width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.guess-row{display:flex;gap:10px;align-items:center;justify-content:center}
+.guess-field{display:flex;flex-direction:column;align-items:center;gap:6px}
+.guess-field label{font-family:var(--fh);font-size:9px;letter-spacing:2px;color:var(--text2)}
+.guess-input{
+  width:84px;background:var(--glass);border:1px solid var(--glass-b);border-radius:10px;
+  color:var(--led);font-family:var(--fled);font-size:28px;text-align:center;padding:10px 6px;
+  text-shadow:0 0 6px rgba(57,255,106,.4);
+}
+.guess-input:focus{outline:none;border-color:var(--accent2)}
+.guess-colon{font-family:var(--fled);font-size:28px;color:var(--text2);margin-top:18px}
+
+.action-row{display:flex;gap:10px;width:100%;max-width:360px}
+.btn-primary{flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;padding:14px 18px;font-family:var(--fh);font-size:11px;font-weight:700;letter-spacing:2px;color:#fff;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(59,130,246,.35)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(59,130,246,.5)}
+.btn-primary:active{transform:scale(.97)}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-secondary{background:var(--glass);border:1px solid var(--glass-b);border-radius:12px;padding:14px 18px;font-family:var(--fh);font-size:10px;letter-spacing:1px;color:var(--text2);cursor:pointer;transition:all .2s}
+.btn-secondary:hover{background:var(--glass-b);color:var(--text)}
+
+.status-line{font-family:var(--fh);font-size:11px;letter-spacing:2px;color:var(--text2);text-align:center;min-height:16px}
+
+/* ── RESULT OVERLAY ── */
+#result-overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(6,4,15,.85);backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .3s}
+#result-overlay.show{opacity:1;pointer-events:all}
+.result-card{background:var(--surface);border:1px solid var(--glass-b);border-radius:20px;padding:30px;text-align:center;max-width:320px;width:90%;animation:popIn .35s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes popIn{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+.res-score{font-family:var(--fled);font-size:54px;font-weight:700;margin:6px 0;color:var(--led);text-shadow:0 0 10px rgba(57,255,106,.6)}
+.res-lbl{font-family:var(--fh);font-size:10px;letter-spacing:3px;color:var(--text2)}
+.res-rows{margin:18px 0;display:flex;flex-direction:column;gap:8px}
+.res-row{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--glass-b)}
+.res-row:last-child{border-bottom:none}
+.res-row .k{color:var(--text2)}
+.res-row .v{font-family:var(--fled);color:var(--led)}
+.res-actions{display:flex;gap:9px;margin-top:6px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:2px}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+
+<!-- RESULT OVERLAY -->
+<div id="result-overlay">
+  <div class="result-card">
+    <div class="res-lbl">ROUND RESULT</div>
+    <div class="res-score" id="res-score">0</div>
+    <div class="res-lbl">POINTS</div>
+    <div class="res-rows">
+      <div class="res-row"><span class="k" id="res-target-lbl">Target Time</span><span class="v" id="res-target">00.00s</span></div>
+      <div class="res-row"><span class="k" id="res-you-lbl">Your Time</span><span class="v" id="res-you">00.00s</span></div>
+      <div class="res-row"><span class="k" id="res-diff-lbl">Difference</span><span class="v" id="res-diff">0.00s</span></div>
+    </div>
+    <div class="res-actions">
+      <button class="btn-secondary" style="flex:1" onclick="backToMenu()">MENU</button>
+      <button class="btn-primary" style="flex:2" onclick="nextRound()">NEXT ROUND ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- MENU -->
+<div id="menu-screen" class="screen active">
+  <a href="index.html" class="home-back">← Home</a>
+  <div style="text-align:center">
+    <span class="logo-icon">⏱️</span>
+    <div class="logo-title">STOPWATCH SNAP</div>
+    <div class="logo-sub">Trust Your Internal Clock</div>
+  </div>
+  <div class="mode-grid">
+    <div class="mode-card" style="--ca:#7c3aed;--cb:#ec4899" onclick="startMode('guess')">
+      <span class="card-icon">❓</span>
+      <div><div class="card-name">GUESS THE TIME</div><div class="card-desc">The clock runs hidden and stops on its own. Guess how long it ran — seconds and hundredths.</div></div>
+    </div>
+    <div class="mode-card" style="--ca:#06b6d4;--cb:#7c3aed" onclick="startMode('stop')">
+      <span class="card-icon">🎯</span>
+      <div><div class="card-name">STOP AT THE RIGHT TIME</div><div class="card-desc">A target time is shown. Start and stop the hidden clock as close to it as you can.</div></div>
+    </div>
+    <div class="mode-card" style="--ca:#10b981;--cb:#06b6d4" onclick="startMode('sequence')">
+      <span class="card-icon">🪜</span>
+      <div><div class="card-name">PERFECT FIVE</div><div class="card-desc">Stop the hidden clock at exactly 1s, 2s, 3s, 4s, then 5s — back to back, in order.</div></div>
+    </div>
+  </div>
+  <div class="stats-bar">
+    <div class="stat-item"><div class="stat-val" id="m-best">—</div><div class="stat-lbl">Best Score</div></div>
+    <div class="stat-item"><div class="stat-val" id="m-avg">—</div><div class="stat-lbl">Avg Score</div></div>
+    <div class="stat-item"><div class="stat-val" id="m-rounds">0</div><div class="stat-lbl">Rounds Played</div></div>
+  </div>
+  <button class="sound-toggle" id="sound-btn" onclick="toggleSound()">🔇 Sound Off</button>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen">
+  <div class="game-topbar">
+    <div class="back-btn" onclick="backToMenu()">←</div>
+    <div class="round-badge"><span id="round-label">ROUND</span> <span id="g-round">1</span></div>
+  </div>
+
+  <div class="target-display" id="target-display" style="display:none">
+    <div class="target-lbl">Hit This Target</div>
+    <div class="target-val" id="target-val">07.42s</div>
+  </div>
+
+  <div class="watch-body">
+    <div class="led-screen">
+      <div class="led-text" id="led-text">00.00</div>
+      <div class="led-status" id="led-status">READY</div>
+    </div>
+    <div class="watch-btn-row">
+      <button class="watch-btn start" id="start-btn" onclick="onStart()">START</button>
+      <button class="watch-btn stop" id="stop-btn" onclick="onStop()" disabled>STOP</button>
+    </div>
+  </div>
+
+  <div class="status-line" id="status-line">Press START when you're ready.</div>
+
+  <!-- Guess input (only for Guess The Time mode) -->
+  <div class="guess-panel" id="guess-panel" style="display:none">
+    <div class="guess-row">
+      <div class="guess-field">
+        <label>SECONDS (0–15)</label>
+        <input type="number" class="guess-input" id="guess-sec" min="0" max="15" placeholder="00">
+      </div>
+      <div class="guess-colon">.</div>
+      <div class="guess-field">
+        <label>HUNDREDTHS</label>
+        <input type="number" class="guess-input" id="guess-ms" min="0" max="99" placeholder="00">
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="btn-primary" id="submit-guess-btn" onclick="submitGuess()">SUBMIT GUESS</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══ STATE ═══ */
+const S = {
+  mode:'guess',          // 'guess' | 'stop' | 'sequence'
+  round:1,
+  target:0,              // secret stop time (guess mode) or shown target (stop/sequence mode), seconds
+  running:false,
+  startPerf:0,
+  rafID:null,
+  autoStopID:null,
+  actualElapsed:0,
+  snd:false,
+  history:[],            // scores
+  seqTargets:[1,2,3,4,5],// Perfect Five target ladder
+  seqIndex:0,
+  seqScores:[]
+};
+
+/* ═══ STATS ═══ */
+function loadStats(){try{return JSON.parse(localStorage.getItem('ssnap_v1')||'{}')}catch{return{}}}
+function saveStats(s){localStorage.setItem('ssnap_v1',JSON.stringify(s))}
+function recordScore(score){
+  const s=loadStats();
+  s.rounds=(s.rounds||0)+1;
+  s.totalScore=(s.totalScore||0)+score;
+  s.best=s.best?Math.max(s.best,score):score;
+  saveStats(s);return s;
+}
+function refreshMenuStats(){
+  const s=loadStats();
+  document.getElementById('m-best').textContent=s.best!==undefined?s.best:'—';
+  document.getElementById('m-rounds').textContent=s.rounds||0;
+  const avg=s.rounds?Math.round(s.totalScore/s.rounds):'—';
+  document.getElementById('m-avg').textContent=avg;
+}
+
+/* ═══ AUDIO ═══
+   Start = long beep (~0.5s). Stop = quick beep (~0.08s). Same for both modes. */
+let _actx=null;
+function getAC(){return _actx||(_actx=new(window.AudioContext||window.webkitAudioContext)())}
+function beep(freq,dur,vol=.3){
+  if(!S.snd)return;
+  try{
+    const c=getAC(),o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);
+    o.type='square';o.frequency.setValueAtTime(freq,c.currentTime);
+    g.gain.setValueAtTime(vol,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);
+    o.start(c.currentTime);o.stop(c.currentTime+dur);
+  }catch(_){}
+}
+const startBeep=()=>beep(880,0.5,.25);   // long beep — 0.5s
+const stopBeep =()=>beep(1300,0.08,.3);  // quick beep
+const winChime =()=>{[660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.25,.25),i*110));};
+
+/* ═══ BACKGROUND ═══ */
+function initBG(){
+  const cv=document.getElementById('bg-canvas'),ctx=cv.getContext('2d');
+  let stars=[];
+  const resize=()=>{cv.width=innerWidth;cv.height=innerHeight;};
+  const mkStars=()=>{stars=[];for(let i=0;i<100;i++)stars.push({x:Math.random()*cv.width,y:Math.random()*cv.height,r:.5+Math.random()*1.2,o:.2+Math.random()*.6,t:Math.random()*Math.PI*2});};
+  const draw=()=>{
+    ctx.clearRect(0,0,cv.width,cv.height);
+    stars.forEach(s=>{s.t+=.018;const a=s.o*(.7+.3*Math.sin(s.t));ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${a*0.5})`;ctx.fill();});
+    requestAnimationFrame(draw);
+  };
+  resize();mkStars();draw();addEventListener('resize',()=>{resize();mkStars();});
+}
+
+/* ═══ SCREEN NAV ═══ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='menu-screen')refreshMenuStats();
+}
+function backToMenu(){
+  stopAllTimers();
+  document.getElementById('result-overlay').classList.remove('show');
+  showScreen('menu-screen');
+}
+
+/* ═══ HELPERS ═══ */
+function fmtSS(t){ // t in seconds -> "SS.HH" (seconds.hundredths), 0-15s range
+  const s=Math.floor(t);
+  const cs=Math.round((t-s)*100);
+  return `${s.toString().padStart(2,'0')}.${cs.toString().padStart(2,'0')}`;
+}
+function rndTarget(){ return Math.round((Math.random()*15)*100)/100; } // 0.00–15.00s
+
+/* ═══ MODE START ═══ */
+function startMode(mode){
+  S.mode=mode; S.round=1; S.history=[];
+  if(mode==='sequence'){ S.seqIndex=0; S.seqScores=[]; }
+  document.getElementById('round-label').textContent = (mode==='sequence') ? 'STEP' : 'ROUND';
+  document.getElementById('g-round').textContent = (mode==='sequence') ? `${S.seqIndex+1}/5` : S.round;
+  setupRound();
+  showScreen('game-screen');
+}
+function nextRound(){
+  document.getElementById('result-overlay').classList.remove('show');
+  if(S.mode==='sequence'){
+    // Restart the whole 1s–5s ladder fresh
+    S.seqIndex=0; S.seqScores=[];
+    document.getElementById('g-round').textContent=`${S.seqIndex+1}/5`;
+  } else {
+    S.round++;
+    document.getElementById('g-round').textContent=S.round;
+  }
+  setupRound();
+}
+function setupRound(){
+  stopAllTimers();
+  S.target = (S.mode==='sequence') ? S.seqTargets[S.seqIndex] : rndTarget();
+  S.running=false;
+  S.actualElapsed=0;
+
+  const ledText=document.getElementById('led-text');
+  ledText.textContent='00.00';
+  ledText.className='led-text';
+  document.getElementById('led-status').textContent='READY';
+
+  document.getElementById('start-btn').disabled=false;
+  document.getElementById('stop-btn').disabled=true;
+  document.getElementById('guess-panel').style.display='none';
+  document.getElementById('guess-sec').value='';
+  document.getElementById('guess-ms').value='';
+
+  if(S.mode==='stop'){
+    document.getElementById('target-display').style.display='block';
+    document.getElementById('target-val').textContent=fmtSS(S.target)+'s';
+    document.getElementById('status-line').textContent='Memorise the target, then START and STOP as close as you can.';
+  } else if(S.mode==='sequence'){
+    document.getElementById('target-display').style.display='block';
+    document.getElementById('target-val').textContent=S.target.toFixed(2)+'s';
+    document.getElementById('status-line').textContent=`Step ${S.seqIndex+1} of 5 — stop the clock at exactly ${S.target}s.`;
+  } else {
+    document.getElementById('target-display').style.display='none';
+    document.getElementById('status-line').textContent='Press START. The clock will run hidden and stop itself — guess how long it ran.';
+  }
+}
+
+/* ═══ START / STOP ═══ */
+function onStart(){
+  if(S.running)return;
+  S.running=true;
+  startBeep();
+  document.getElementById('start-btn').disabled=true;
+  document.getElementById('stop-btn').disabled=(S.mode==='guess'); // guess mode: no manual stop
+  const ledText=document.getElementById('led-text');
+  ledText.textContent='??.??';
+  ledText.classList.add('dim');
+  document.getElementById('led-status').textContent='RUNNING';
+  document.getElementById('status-line').textContent = (S.mode==='stop'||S.mode==='sequence')
+    ? 'Running... press STOP at the right moment!'
+    : 'Running... it will stop on its own.';
+
+  S.startPerf=performance.now();
+
+  if(S.mode==='guess'){
+    // Auto-stop at secret target
+    S.autoStopID=setTimeout(()=>{ doStop(true); },S.target*1000);
+  }
+}
+
+function onStop(){
+  if(!S.running||(S.mode!=='stop'&&S.mode!=='sequence'))return;
+  doStop(false);
+}
+
+function doStop(auto){
+  if(!S.running)return;
+  S.running=false;
+  S.actualElapsed=(performance.now()-S.startPerf)/1000;
+  if(S.autoStopID){clearTimeout(S.autoStopID);S.autoStopID=null;}
+  stopBeep();
+
+  document.getElementById('start-btn').disabled=true;
+  document.getElementById('stop-btn').disabled=true;
+  document.getElementById('led-status').textContent='STOPPED';
+
+  if(S.mode==='guess'){
+    // Keep display hidden — player must guess
+    document.getElementById('led-text').textContent='??.??';
+    document.getElementById('status-line').textContent='Stopped! How long did it run? Enter your guess below.';
+    document.getElementById('guess-panel').style.display='flex';
+    document.getElementById('guess-sec').focus();
+  } else if(S.mode==='stop'){
+    // Stop mode: reveal actual immediately, score right away
+    const ledText=document.getElementById('led-text');
+    ledText.classList.remove('dim');
+    ledText.textContent=fmtSS(S.actualElapsed);
+    finishStopMode();
+  } else if(S.mode==='sequence'){
+    const ledText=document.getElementById('led-text');
+    ledText.classList.remove('dim');
+    ledText.textContent=fmtSS(S.actualElapsed);
+    finishSequenceStep();
+  }
+}
+
+function stopAllTimers(){
+  if(S.autoStopID){clearTimeout(S.autoStopID);S.autoStopID=null;}
+  S.running=false;
+}
+
+/* ═══ SCORING ═══
+   diff in seconds -> score 0-100. Tight tolerance rewards precision to the hundredth. */
+function scoreFromDiff(diff){
+  return Math.max(0, Math.round(100 - diff*60));
+}
+
+function finishStopMode(){
+  const diff=Math.abs(S.actualElapsed-S.target);
+  const score=scoreFromDiff(diff);
+  showResult(score, S.target, S.actualElapsed, diff, 'Target Time', 'Your Stop Time');
+}
+
+/* ═══ PERFECT FIVE — sequence mode ═══
+   Player must stop the hidden clock at 1s, 2s, 3s, 4s, 5s in order.
+   Each step is scored individually; the round score is the average
+   of all five (so it folds into the same overall stats as the other
+   modes, just like a single round's score would).                 */
+function finishSequenceStep(){
+  const diff=Math.abs(S.actualElapsed-S.target);
+  const score=scoreFromDiff(diff);
+  S.seqScores.push(score);
+
+  document.getElementById('start-btn').disabled=true;
+  document.getElementById('stop-btn').disabled=true;
+  document.getElementById('status-line').textContent=`Step ${S.seqIndex+1}: ${score} pts — off by ${fmtSS(diff)}s`;
+
+  setTimeout(()=>{
+    S.seqIndex++;
+    if(S.seqIndex>=S.seqTargets.length){
+      finishSequence();
+    } else {
+      document.getElementById('g-round').textContent=`${S.seqIndex+1}/5`;
+      setupRound();
+    }
+  }, 1300);
+}
+
+function finishSequence(){
+  const total=S.seqScores.reduce((a,b)=>a+b,0);
+  const avg=Math.round(total/S.seqScores.length);
+  if(avg>=90) winChime();
+  recordScore(avg); // folds into the same overall best/avg/rounds stats as every other mode
+
+  document.getElementById('res-score').textContent=avg;
+  document.getElementById('res-target-lbl').textContent='Targets (s)';
+  document.getElementById('res-you-lbl').textContent='Step Scores';
+  document.getElementById('res-target').textContent=S.seqTargets.join(' · ');
+  document.getElementById('res-you').textContent=S.seqScores.join(' · ');
+  document.getElementById('res-diff-lbl').textContent='Average of 5';
+  document.getElementById('res-diff').textContent=avg+' pts';
+
+  document.getElementById('result-overlay').classList.add('show');
+}
+
+function submitGuess(){
+  const secV=document.getElementById('guess-sec').value;
+  const msV=document.getElementById('guess-ms').value;
+  if(secV===''||msV===''){ document.getElementById('status-line').textContent='Enter both seconds and hundredths first.'; return; }
+  let sec=Math.max(0,Math.min(15,parseInt(secV)||0));
+  let ms=Math.max(0,Math.min(99,parseInt(msV)||0));
+  const guess=sec+ms/100;
+  const diff=Math.abs(guess-S.actualElapsed);
+  const score=scoreFromDiff(diff);
+
+  // Reveal actual time on display now
+  const ledText=document.getElementById('led-text');
+  ledText.classList.remove('dim');
+  ledText.textContent=fmtSS(S.actualElapsed);
+
+  showResult(score, S.actualElapsed, guess, diff, 'Actual Time', 'Your Guess');
+}
+
+function showResult(score, refTime, yourTime, diff, refLabel, yourLabel){
+  S.history.push(score);
+  const stats=recordScore(score);
+  if(score>=90) winChime();
+
+  document.getElementById('res-score').textContent=score;
+  document.getElementById('res-target-lbl').textContent=refLabel;
+  document.getElementById('res-you-lbl').textContent=yourLabel;
+  document.getElementById('res-diff-lbl').textContent='Difference';
+  document.getElementById('res-target').textContent=fmtSS(refTime)+'s';
+  document.getElementById('res-you').textContent=fmtSS(yourTime)+'s';
+  document.getElementById('res-diff').textContent=fmtSS(diff)+'s';
+
+  document.getElementById('result-overlay').classList.add('show');
+}
+
+/* ═══ SOUND TOGGLE ═══ */
+function toggleSound(){
+  S.snd=!S.snd;
+  const b=document.getElementById('sound-btn');
+  b.textContent=S.snd?'🔊 Sound On':'🔇 Sound Off';
+  b.className='sound-toggle'+(S.snd?' on':'');
+  if(S.snd){getAC();}
+}
+
+/* ═══ INIT ═══ */
+initBG();
+refreshMenuStats();
+</script>
+</body>
+</html>
