@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hand Cricket 🏏</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06040f;--surface:#0f0c26;--surface2:#1a1640;
+  --blue:#3b82f6;--blue-l:#93c5fd;--red:#ef4444;--red-l:#fca5a5;
+  --gold:#f59e0b;--green:#10b981;--cyan:#06b6d4;
+  --text:#f0eeff;--text2:#8b82c8;
+  --glass:rgba(255,255,255,0.04);--glass-b:rgba(255,255,255,0.09);
+  --fh:'Orbitron',monospace;--fb:'Exo 2',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:var(--fb);background:var(--bg);color:var(--text);overflow:hidden}
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+.screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;overflow-y:auto;padding:18px;opacity:0;pointer-events:none;transition:opacity .3s}
+.screen.active{opacity:1;pointer-events:all}
+
+/* MENU */
+#menu-screen{justify-content:center;gap:16px}
+.logo-icon{font-size:50px;display:block;filter:drop-shadow(0 0 18px var(--gold));animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.logo-title{font-family:var(--fh);font-size:clamp(22px,7vw,38px);font-weight:900;background:linear-gradient(135deg,var(--gold),var(--green),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:3px;text-align:center}
+.logo-sub{font-size:11px;color:var(--text2);letter-spacing:4px;text-transform:uppercase;margin-top:3px;text-align:center}
+.home-back{background:var(--glass);border:1px solid var(--glass-b);border-radius:10px;padding:7px 13px;font-family:var(--fh);font-size:10px;color:var(--text2);cursor:pointer;text-decoration:none;transition:all .2s}
+.home-back:hover{background:var(--glass-b);color:var(--text)}
+.settings-box{width:100%;max-width:380px;background:var(--glass);border:1px solid var(--glass-b);border-radius:16px;padding:16px}
+.settings-title{font-family:var(--fh);font-size:9px;letter-spacing:2px;color:var(--text2);margin-bottom:11px;text-transform:uppercase}
+.opt-row{display:flex;gap:6px;flex-wrap:wrap}
+.opt{padding:8px 10px;border-radius:9px;background:var(--surface2);border:1.5px solid var(--glass-b);font-family:var(--fh);font-size:8.5px;font-weight:700;letter-spacing:1px;color:var(--text2);cursor:pointer;transition:all .2s;flex:1;text-align:center;white-space:nowrap}
+.opt:hover{border-color:var(--gold);color:var(--gold)}
+.opt.sel{background:rgba(245,158,11,.15);border-color:var(--gold);color:var(--gold)}
+.start-btn{background:linear-gradient(135deg,var(--gold),#f97316);border:none;border-radius:14px;padding:14px 48px;font-family:var(--fh);font-size:12px;font-weight:700;letter-spacing:2px;color:#1a0e00;cursor:pointer;box-shadow:0 6px 24px rgba(245,158,11,.4);transition:all .2s;width:100%;max-width:380px}
+.start-btn:hover{transform:translateY(-2px)}
+.start-btn:active{transform:scale(.97)}
+.start-btn:disabled{opacity:.3;cursor:not-allowed;transform:none;box-shadow:none}
+.err-msg{color:var(--red-l);font-size:9px;text-align:center;min-height:14px;font-family:var(--fh);letter-spacing:1px}
+.snd-tog{background:var(--glass);border:1px solid var(--glass-b);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:12px;color:var(--text2);transition:all .2s}
+.snd-tog.on{color:var(--cyan);border-color:var(--cyan)}
+
+/* TOSS */
+#toss-screen{justify-content:center;gap:14px}
+.toss-title{font-family:var(--fh);font-size:18px;font-weight:700;text-align:center;color:var(--gold);letter-spacing:2px}
+.toss-sub{font-size:12px;color:var(--text2);text-align:center;max-width:300px}
+.oe-row{display:flex;gap:12px;width:100%;max-width:320px}
+.oe-btn{flex:1;padding:18px;border-radius:16px;font-family:var(--fh);font-size:15px;font-weight:900;letter-spacing:2px;cursor:pointer;transition:all .2s;border:2px solid var(--glass-b);background:var(--glass);color:var(--text2)}
+.oe-btn.odd:hover,.oe-btn.odd.sel{background:rgba(59,130,246,.2);border-color:var(--blue);color:var(--blue-l)}
+.oe-btn.even:hover,.oe-btn.even.sel{background:rgba(239,68,68,.2);border-color:var(--red);color:var(--red-l)}
+.toss-hint{font-size:11px;color:var(--text2);text-align:center}
+
+/* NUMBER GRID */
+.num-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;width:100%;max-width:380px}
+.num-btn{
+  border-radius:12px;background:var(--glass);border:1.5px solid var(--glass-b);
+  cursor:pointer;transition:all .18s;padding:7px 4px 5px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+.num-btn:hover:not(:disabled){border-color:var(--gold);background:rgba(245,158,11,.08);transform:translateY(-2px)}
+.num-btn:active:not(:disabled){transform:scale(.95)}
+.num-btn:disabled{opacity:.3;cursor:not-allowed}
+.num-btn .hand-icon{width:46px;height:58px}
+.num-btn .hand-icon svg{width:100%;height:100%}
+.num-btn .num-lbl{font-family:var(--fh);font-size:10px;font-weight:700;color:var(--text2)}
+.num-btn:hover:not(:disabled) .num-lbl{color:var(--gold)}
+
+/* ANIMATION SCREEN */
+#anim-screen{justify-content:center;gap:18px}
+.anim-title-txt{font-family:var(--fh);font-size:11px;letter-spacing:2px;color:var(--text2)}
+.anim-vs{display:flex;gap:20px;align-items:flex-end;justify-content:center}
+.hand-side{display:flex;flex-direction:column;align-items:center;gap:10px}
+.hand-big{width:96px;height:116px}
+.hand-big svg{width:100%;height:100%}
+.hand-name{font-family:var(--fh);font-size:9px;letter-spacing:2px;color:var(--text2)}
+.hand-num{font-family:var(--fh);font-size:24px;font-weight:900;min-height:32px}
+.vs-badge{font-family:var(--fh);font-size:13px;font-weight:900;color:var(--text2);padding-bottom:18px}
+.anim-result{font-family:var(--fh);font-size:20px;font-weight:900;text-align:center;min-height:28px;letter-spacing:2px}
+.anim-sub{font-size:12px;color:var(--text2);text-align:center;min-height:16px}
+
+@keyframes handPump{
+  0%,100%{transform:translateY(0) scale(1)}
+  35%{transform:translateY(-24px) scale(.92)}
+  65%{transform:translateY(10px) scale(1.07)}
+}
+@keyframes handReveal{
+  0%{transform:scale(.4) rotate(-20deg);opacity:0}
+  60%{transform:scale(1.22) rotate(4deg);opacity:1}
+  100%{transform:scale(1) rotate(0);opacity:1}
+}
+.pumping{animation:handPump .34s ease-in-out 3}
+.revealing{animation:handReveal .48s cubic-bezier(.175,.885,.32,1.275) forwards}
+
+/* MATCH SCREEN */
+#match-screen{padding:10px;gap:9px;justify-content:flex-start}
+.match-header{width:100%;max-width:420px;display:flex;align-items:center;gap:8px}
+.back-sm{width:32px;height:32px;background:var(--glass);border:1px solid var(--glass-b);border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text);flex-shrink:0}
+.scorecard{width:100%;max-width:420px;background:var(--glass);border:1px solid var(--glass-b);border-radius:14px;padding:12px 16px}
+.sc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sc-team{font-family:var(--fh);font-size:9px;letter-spacing:2px;color:var(--text2)}
+.sc-target-pill{font-family:var(--fh);font-size:9px;letter-spacing:1px;padding:4px 10px;border-radius:7px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);color:var(--gold)}
+.sc-score{font-family:var(--fh);font-size:clamp(26px,8vw,38px);font-weight:900;color:var(--text);letter-spacing:2px}
+.sc-score span{color:var(--text2);font-size:.55em}
+.sc-detail{display:flex;gap:10px;margin-top:4px;flex-wrap:wrap}
+.sc-pill{font-size:9px;color:var(--text2);background:var(--surface2);border-radius:6px;padding:3px 8px;font-family:var(--fh)}
+.sc-need{font-family:var(--fh);font-size:9px;letter-spacing:1px;color:var(--green);margin-top:5px}
+.match-hands{display:flex;align-items:flex-end;justify-content:center;gap:16px;padding:2px 0}
+.mhand{display:flex;flex-direction:column;align-items:center;gap:5px}
+.mhand-wrap{width:72px;height:88px}
+.mhand-wrap svg{width:100%;height:100%}
+.mhand-lbl{font-family:var(--fh);font-size:7.5px;letter-spacing:1.5px;color:var(--text2)}
+.mhand-num{font-family:var(--fh);font-size:18px;font-weight:900;min-height:26px}
+.match-result{font-family:var(--fh);font-size:18px;font-weight:900;text-align:center;min-height:26px;letter-spacing:2px}
+.match-result.run{color:var(--green)}
+.match-result.out{color:var(--red)}
+.match-result.dot{color:var(--text2)}
+.match-info{font-size:9px;color:var(--text2);text-align:center;min-height:13px;font-family:var(--fh);letter-spacing:1px}
+
+/* SIDE SCREEN */
+#side-screen{justify-content:center;gap:16px}
+.side-title{font-family:var(--fh);font-size:15px;font-weight:700;text-align:center;letter-spacing:2px}
+.side-sub{font-size:12px;color:var(--text2);text-align:center}
+.side-row{display:flex;gap:12px;width:100%;max-width:320px}
+.side-btn{flex:1;padding:24px 14px;border-radius:18px;border:2px solid var(--glass-b);background:var(--glass);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--fh)}
+.side-btn:hover{transform:translateY(-3px)}
+.side-btn.bat:hover{border-color:var(--blue);background:rgba(59,130,246,.12)}
+.side-btn.bowl:hover{border-color:var(--red);background:rgba(239,68,68,.12)}
+.side-btn .side-icon{font-size:34px;margin-bottom:8px;display:block}
+.side-btn .side-name{font-size:13px;font-weight:700;letter-spacing:2px}
+.side-btn.bat .side-name{color:var(--blue-l)}
+.side-btn.bowl .side-name{color:var(--red-l)}
+
+/* RESULT */
+#result-screen{justify-content:center;gap:16px}
+.res-icon{font-size:60px;filter:drop-shadow(0 0 20px var(--gold))}
+.res-title{font-family:var(--fh);font-size:clamp(20px,6vw,30px);font-weight:900;text-align:center;letter-spacing:3px}
+.res-title.win{color:var(--green)} .res-title.lose{color:var(--red)}
+.scoresheet{width:100%;max-width:320px;background:var(--glass);border:1px solid var(--glass-b);border-radius:16px;padding:16px}
+.ss-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--glass-b);font-size:12px}
+.ss-row:last-child{border:none}
+.ss-k{color:var(--text2)} .ss-v{font-family:var(--fh);font-size:12px;font-weight:700;color:var(--text)}
+.res-actions{display:flex;gap:8px;width:100%;max-width:320px}
+.btn-g{flex:1;background:linear-gradient(135deg,var(--gold),#f97316);border:none;border-radius:12px;padding:12px;font-family:var(--fh);font-size:10px;font-weight:700;letter-spacing:1.5px;color:#1a0e00;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(245,158,11,.35)}
+.btn-g:hover{transform:translateY(-2px)}
+.btn-s{flex:1;background:var(--glass);border:1px solid var(--glass-b);border-radius:12px;padding:12px;font-family:var(--fh);font-size:9px;letter-spacing:1px;color:var(--text2);cursor:pointer;transition:all .2s}
+.btn-s:hover{background:var(--glass-b);color:var(--text)}
+
+/* BREAK OVERLAY */
+#break-overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(6,4,15,.92);backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:opacity .3s}
+#break-overlay.show{opacity:1;pointer-events:all}
+.break-card{background:var(--surface);border:1px solid var(--glass-b);border-radius:20px;padding:28px;text-align:center;max-width:290px;width:90%;animation:popIn .35s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes popIn{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+.break-title{font-family:var(--fh);font-size:11px;letter-spacing:2px;color:var(--text2);margin-bottom:10px}
+.break-score{font-family:var(--fh);font-size:34px;font-weight:900;color:var(--text);margin:8px 0}
+.break-target{font-family:var(--fh);font-size:13px;color:var(--gold);margin-bottom:18px}
+.break-btn{background:linear-gradient(135deg,var(--gold),#f97316);border:none;border-radius:12px;padding:13px 32px;font-family:var(--fh);font-size:10px;font-weight:700;letter-spacing:2px;color:#1a0e00;cursor:pointer;transition:all .2s}
+.break-btn:hover{transform:translateY(-2px)}
+
+#confetti-container{position:fixed;inset:0;z-index:9000;pointer-events:none;overflow:hidden}
+.cp{position:absolute;animation:cfFall linear forwards}
+@keyframes cfFall{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:2px}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="confetti-container"></div>
+
+<div id="break-overlay">
+  <div class="break-card">
+    <div class="break-title" id="brk-title">INNINGS COMPLETE</div>
+    <div class="break-score" id="brk-score">47/3</div>
+    <div class="break-target" id="brk-target">Target: 48</div>
+    <button class="break-btn" onclick="startSecondInnings()">NEXT INNINGS ▶</button>
+  </div>
+</div>
+
+<!-- MENU -->
+<div id="menu-screen" class="screen active">
+  <div style="text-align:center">
+    <span class="logo-icon">🏏</span>
+    <div class="logo-title">HAND CRICKET</div>
+    <div class="logo-sub">The Classic Finger Game</div>
+  </div>
+  <div class="settings-box">
+    <div class="settings-title">Wickets per Innings</div>
+    <div class="opt-row" id="wkts-row">
+      <div class="opt" data-v="0" onclick="selOpt('wkts',0)">No Limit</div>
+      <div class="opt" data-v="3" onclick="selOpt('wkts',3)">3 Wkts</div>
+      <div class="opt" data-v="5" onclick="selOpt('wkts',5)">5 Wkts</div>
+      <div class="opt" data-v="10" onclick="selOpt('wkts',10)">10 Wkts</div>
+    </div>
+  </div>
+  <div class="settings-box">
+    <div class="settings-title">Overs per Innings</div>
+    <div class="opt-row" id="ovrs-row">
+      <div class="opt" data-v="0" onclick="selOpt('ovrs',0)">Unlimited</div>
+      <div class="opt" data-v="20" onclick="selOpt('ovrs',20)">20 Ovs</div>
+      <div class="opt" data-v="50" onclick="selOpt('ovrs',50)">50 Ovs</div>
+      <div class="opt" data-v="100" onclick="selOpt('ovrs',100)">100 Ovs</div>
+    </div>
+  </div>
+  <div class="err-msg" id="settings-err"></div>
+  <button class="start-btn" id="start-btn" onclick="goToToss()" disabled>START GAME</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="snd-tog" id="snd-btn" onclick="toggleSnd()">🔇 Sound</button>
+    <a href="index.html" class="home-back">← Home</a>
+  </div>
+</div>
+
+<!-- TOSS -->
+<div id="toss-screen" class="screen">
+  <div class="toss-title">🪙 THE TOSS</div>
+  <div class="toss-sub">Pick ODD or EVEN — then choose your number (0–10). Your number + CPU's = odd or even.</div>
+  <div class="oe-row">
+    <div class="oe-btn odd" id="oe-odd" onclick="selOE('odd')">ODD</div>
+    <div class="oe-btn even" id="oe-even" onclick="selOE('even')">EVEN</div>
+  </div>
+  <div class="toss-hint" id="toss-hint" style="opacity:.4">← Pick Odd or Even first</div>
+  <div class="num-grid" id="toss-grid"></div>
+</div>
+
+<!-- ANIMATION -->
+<div id="anim-screen" class="screen">
+  <div class="anim-title-txt" id="anim-title"></div>
+  <div class="anim-vs">
+    <div class="hand-side">
+      <div class="hand-name" id="left-name">YOU</div>
+      <div class="hand-big" id="left-hand"></div>
+      <div class="hand-num" id="left-num" style="color:var(--blue-l)"></div>
+    </div>
+    <div class="vs-badge">VS</div>
+    <div class="hand-side">
+      <div class="hand-name" id="right-name">CPU</div>
+      <div class="hand-big" id="right-hand"></div>
+      <div class="hand-num" id="right-num" style="color:var(--red-l)"></div>
+    </div>
+  </div>
+  <div class="anim-result" id="anim-result"></div>
+  <div class="anim-sub" id="anim-sub"></div>
+</div>
+
+<!-- CHOOSE SIDE -->
+<div id="side-screen" class="screen">
+  <div class="side-title">YOU WON THE TOSS!</div>
+  <div class="side-sub">What would you like to do?</div>
+  <div class="side-row">
+    <div class="side-btn bat" onclick="chooseSide('bat')">
+      <span class="side-icon">🏏</span><span class="side-name">BAT</span>
+    </div>
+    <div class="side-btn bowl" onclick="chooseSide('bowl')">
+      <span class="side-icon">⚾</span><span class="side-name">BOWL</span>
+    </div>
+  </div>
+</div>
+
+<!-- MATCH -->
+<div id="match-screen" class="screen">
+  <div class="match-header">
+    <div class="back-sm" onclick="confirmQuit()">←</div>
+    <div id="innings-label" style="font-family:var(--fh);font-size:9px;letter-spacing:2px;color:var(--text2)">INNINGS 1</div>
+    <div id="role-pill" style="margin-left:auto;padding:5px 12px;border-radius:8px;font-family:var(--fh);font-size:9px;font-weight:700;letter-spacing:1.5px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);color:var(--blue-l)">BATTING</div>
+  </div>
+  <div class="scorecard">
+    <div class="sc-header">
+      <div class="sc-team" id="sc-team">YOU ARE BATTING</div>
+      <div class="sc-target-pill" id="sc-target" style="display:none">TARGET</div>
+    </div>
+    <div class="sc-score" id="sc-score">0<span>/0</span></div>
+    <div class="sc-detail">
+      <div class="sc-pill" id="sc-wkts">0 wkts</div>
+      <div class="sc-pill" id="sc-ovrs">Over 0.0</div>
+    </div>
+    <div class="sc-need" id="sc-need" style="display:none"></div>
+  </div>
+  <div class="match-hands">
+    <div class="mhand">
+      <div class="mhand-lbl" id="ml-lbl">YOU</div>
+      <div class="mhand-wrap" id="ml-hand"></div>
+      <div class="mhand-num" id="ml-num" style="color:var(--blue-l)">?</div>
+    </div>
+    <div style="font-family:var(--fh);font-size:11px;color:var(--text2);padding-bottom:20px">VS</div>
+    <div class="mhand">
+      <div class="mhand-lbl" id="mr-lbl">CPU</div>
+      <div class="mhand-wrap" id="mr-hand"></div>
+      <div class="mhand-num" id="mr-num" style="color:var(--red-l)">?</div>
+    </div>
+  </div>
+  <div class="match-result" id="match-result">—</div>
+  <div class="match-info" id="match-info">Pick a number to play the ball</div>
+  <div class="num-grid" id="match-grid" style="max-width:380px;width:100%"></div>
+</div>
+
+<!-- RESULT -->
+<div id="result-screen" class="screen">
+  <div class="res-icon" id="res-icon">🏆</div>
+  <div class="res-title win" id="res-title">YOU WIN!</div>
+  <div class="scoresheet" id="scoresheet"></div>
+  <div class="res-actions">
+    <button class="btn-s" onclick="showScreen('menu-screen')">MENU</button>
+    <button class="btn-g" onclick="goToToss()">PLAY AGAIN</button>
+  </div>
+  <a href="index.html" class="home-back" style="margin-top:4px">← Home</a>
+</div>
+
+<script>
+'use strict'
+
+/* ══════════════════════════════════════════
+   HAND CONFIGS  [thumb, index, middle, ring, pinky]
+   1=extended, 0=folded
+   ══════════════════════════════════════════ */
+const HC = {
+  0: [0,0,0,0,0],  // ✊ fist
+  1: [0,1,0,0,0],  // ☝️  index
+  2: [0,1,1,0,0],  // ✌️  peace
+  3: [0,1,1,1,0],  // 3 fingers
+  4: [0,1,1,1,1],  // 4 fingers
+  5: [1,1,1,1,1],  // 🖐️ open
+  6: [1,0,0,0,0],  // 👍 thumbs up
+  7: [1,1,0,0,0],  // 7 — gun/L
+  8: [1,1,1,0,0],  // 8 — 3+thumb
+  9: [1,0,1,1,0],  // 9 — thumb+mid+ring
+  10:[1,0,0,0,1],  // 🤙 shaka
+}
+
+/* ══════════════════════════════════════════
+   HAND SVG GENERATOR
+   ViewBox 80 × 110. Palm-forward view.
+   ══════════════════════════════════════════ */
+function mkHand(n, col='#e2e8f0', flip=false) {
+  const [th, ix, mi, ri, pi] = HC[n]
+  const stroke = 'rgba(0,0,0,0.22)'
+  const baseY = 64
+
+  // pinky, ring, middle, index — left to right
+  const F = [
+    { cx:20, w:14, top:36, ext:pi },
+    { cx:37, w:15, top:20, ext:ri },
+    { cx:54, w:16, top:10, ext:mi },
+    { cx:71, w:15, top:22, ext:ix },
+  ]
+
+  let d = ''
+  F.forEach((f, i) => {
+    const x1 = f.cx - f.w/2, x2 = f.cx + f.w/2
+    if (i === 0) d += `M ${x1} ${baseY} `
+    else d += `L ${x1} ${baseY} `
+
+    if (f.ext) {
+      d += `C ${x1} ${baseY-14} ${x1} ${f.top+10} ${x1} ${f.top+6} `
+      d += `C ${x1} ${f.top} ${x2} ${f.top} ${x2} ${f.top+6} `
+      d += `C ${x2} ${f.top+10} ${x2} ${baseY-14} ${x2} ${baseY} `
+    } else {
+      const bumpTop = baseY - 13
+      d += `C ${x1} ${bumpTop+6} ${x1} ${bumpTop} ${f.cx} ${bumpTop} `
+      d += `C ${x2} ${bumpTop} ${x2} ${bumpTop+6} ${x2} ${baseY} `
+    }
+  })
+
+  // From end of index finger, curve down the right side of the palm,
+  // across the wrist, then back up the left side to close.
+  d += `C 84 70, 86 85, 80 100 `
+  d += `L 66 100 `
+  d += `C 66 119, 34 119, 34 100 `
+  d += `L 20 100 `
+  d += `C 28 85, 26 70, 13 64 `
+  d += `Z`
+
+  // Thumb — separate overlapping sub-shape so it can angle naturally
+  let thumbD
+  if (th) {
+    thumbD = `M 76 80
+      C 88 75, 99 66, 96 51
+      C 94 44, 86 46, 82 55
+      C 79 63, 78 72, 76 80
+      C 74 88, 74 95, 78 99
+      L 67 100
+      C 67 91, 70 84, 76 80
+      Z`
+  } else {
+    thumbD = `M 76 81
+      C 87 78, 93 85, 91 95
+      C 89 102, 79 103, 73 98
+      C 70 93, 71 86, 76 81
+      Z`
+  }
+
+  const flipAttr = flip
+    ? ` style="transform:scaleX(-1);transform-box:fill-box;transform-origin:50% 50%"`
+    : ''
+
+  return `<svg viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg"${flipAttr}>
+    <path d="${d}" fill="${col}" stroke="${stroke}" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="${thumbD}" fill="${col}" stroke="${stroke}" stroke-width="1.4" stroke-linejoin="round"/>
+  </svg>`
+}
+
+/* ══════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════ */
+const S = {
+  settings: { wkts:-1, ovrs:-1 },
+  snd: false,
+  toss: { oe:null },
+  playerBatFirst: true,
+  innings: 1,
+  bat: { runs:0, wkts:0, balls:0 },
+  firstScore: 0,
+  playerBatting: true,
+  animating: false,
+  // History tracking for smarter CPU
+  playerBatHistory: [],
+  playerBowlHistory: [],
+}
+
+/* ══════════════════════════════════════════
+   AUDIO
+   ══════════════════════════════════════════ */
+let _ac=null
+function getAC(){return _ac||(_ac=new(window.AudioContext||window.webkitAudioContext)())}
+function tone(f,type,dur,vol=.22,delay=0){
+  if(!S.snd)return
+  try{const c=getAC(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type=type;o.frequency.value=f;g.gain.setValueAtTime(vol,c.currentTime+delay);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+delay+dur);o.start(c.currentTime+delay);o.stop(c.currentTime+delay+dur)}catch(e){}
+}
+const SFX={
+  hit:r=>{tone(300+r*45,'sine',.1,.25);tone((300+r*45)*1.5,'sine',.08,.18,.06)},
+  out:()=>{tone(180,'sawtooth',.3,.3);tone(140,'sawtooth',.25,.22,.2)},
+  pump:()=>tone(440,'sine',.07,.16),
+  reveal:()=>{tone(660,'sine',.12,.28);tone(880,'sine',.1,.22,.08)},
+  six:()=>{[523,659,784,1047].forEach((f,i)=>tone(f,'sine',.3,.28,i*.08))},
+  win:()=>{[523,659,784,988,1047].forEach((f,i)=>tone(f,'sine',.35,.28,i*.1))},
+  lose:()=>{tone(220,'sawtooth',.4,.3);tone(160,'sawtooth',.35,.22,.25)},
+  click:()=>tone(800,'square',.05,.12),
+  toss:()=>tone(900,'square',.08,.18),
+}
+
+/* ══════════════════════════════════════════
+   BACKGROUND
+   ══════════════════════════════════════════ */
+function initBG(){
+  const cv=document.getElementById('bg-canvas'),ctx=cv.getContext('2d')
+  let stars=[]
+  const resize=()=>{cv.width=innerWidth;cv.height=innerHeight}
+  const mk=()=>{stars=[];for(let i=0;i<100;i++)stars.push({x:Math.random()*cv.width,y:Math.random()*cv.height,r:.5+Math.random()*1.2,o:.15+Math.random()*.5,t:Math.random()*Math.PI*2})}
+  const draw=()=>{ctx.clearRect(0,0,cv.width,cv.height);const g=ctx.createRadialGradient(cv.width*.3,cv.height*.4,0,cv.width*.3,cv.height*.4,cv.width*.65);g.addColorStop(0,'rgba(245,158,11,.04)');g.addColorStop(.6,'rgba(16,185,129,.02)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,cv.width,cv.height);stars.forEach(s=>{s.t+=.018;const a=s.o*(.7+.3*Math.sin(s.t));ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.fill()});requestAnimationFrame(draw)}
+  resize();mk();draw();addEventListener('resize',()=>{resize();mk()})
+}
+
+/* ══════════════════════════════════════════
+   SCREENS
+   ══════════════════════════════════════════ */
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+
+/* ══════════════════════════════════════════
+   SETTINGS
+   ══════════════════════════════════════════ */
+function selOpt(key,val){
+  SFX.click(); S.settings[key]=val
+  document.querySelectorAll(`#${key==='wkts'?'wkts':'ovrs'}-row .opt`).forEach(el=>el.classList.toggle('sel',Number(el.dataset.v)===val))
+  validateSettings()
+}
+function validateSettings(){
+  const {wkts,ovrs}=S.settings,err=document.getElementById('settings-err'),btn=document.getElementById('start-btn')
+  if(wkts===-1||ovrs===-1){err.textContent='';btn.disabled=true;return}
+  if(wkts===0&&ovrs===0){err.textContent='⚠ Select at least one limit';btn.disabled=true;return}
+  err.textContent='';btn.disabled=false
+}
+
+/* ══════════════════════════════════════════
+   TOSS
+   ══════════════════════════════════════════ */
+let _tossOE=null
+function goToToss(){
+  _tossOE=null
+  document.getElementById('oe-odd').classList.remove('sel')
+  document.getElementById('oe-even').classList.remove('sel')
+  document.getElementById('toss-hint').style.opacity='.4'
+  document.getElementById('toss-hint').textContent='← Pick Odd or Even first'
+  buildGrid('toss-grid', onTossNum, true)
+  S.playerBatHistory=[]; S.playerBowlHistory=[]
+  showScreen('toss-screen')
+}
+function selOE(oe){
+  SFX.click(); _tossOE=oe
+  document.getElementById('oe-odd').classList.toggle('sel',oe==='odd')
+  document.getElementById('oe-even').classList.toggle('sel',oe==='even')
+  document.getElementById('toss-hint').textContent='Now pick your number (0–10)'
+  document.getElementById('toss-hint').style.opacity='1'
+  document.querySelectorAll('#toss-grid .num-btn').forEach(b=>b.disabled=false)
+}
+function onTossNum(n){
+  if(!_tossOE) return
+  SFX.click()
+  const cpuNum=Math.floor(Math.random()*11)
+  doShake('THE TOSS','YOU',n,'#93c5fd','CPU',cpuNum,'#fca5a5',false,()=>{
+    const sum=n+cpuNum, isOdd=sum%2===1
+    const win=(isOdd&&_tossOE==='odd')||(!isOdd&&_tossOE==='even')
+    document.getElementById('left-num').textContent=n
+    document.getElementById('right-num').textContent=cpuNum
+    document.getElementById('anim-result').textContent=`${n}+${cpuNum}=${sum} (${isOdd?'ODD':'EVEN'})`
+    document.getElementById('anim-result').style.color=win?'var(--green)':'var(--red)'
+    document.getElementById('anim-sub').textContent=win?'🎉 You win the toss!':'💻 CPU wins the toss!'
+    SFX.toss()
+    setTimeout(()=>{
+      if(win){ showScreen('side-screen') }
+      else {
+        const cpuBats=Math.random()<0.5
+        S.playerBatting=!cpuBats; S.playerBatFirst=!cpuBats
+        document.getElementById('anim-sub').textContent=`CPU chose to ${cpuBats?'BAT':'BOWL'}!`
+        setTimeout(startMatch,1400)
+      }
+    },1800)
+  })
+}
+function chooseSide(side){
+  SFX.click()
+  S.playerBatting=(side==='bat'); S.playerBatFirst=S.playerBatting
+  startMatch()
+}
+
+/* ══════════════════════════════════════════
+   MATCH START / INNINGS
+   ══════════════════════════════════════════ */
+function startMatch(){
+  S.innings=1; S.bat={runs:0,wkts:0,balls:0}; S.firstScore=0; S.animating=false
+  buildGrid('match-grid',onBallNum,false)
+  renderMatch(); showScreen('match-screen')
+}
+function startSecondInnings(){
+  document.getElementById('break-overlay').classList.remove('show')
+  S.innings=2; S.playerBatting=!S.playerBatFirst
+  S.bat={runs:0,wkts:0,balls:0}; S.animating=false
+  buildGrid('match-grid',onBallNum,false)
+  renderMatch()
+}
+
+/* ══════════════════════════════════════════
+   RENDER MATCH
+   ══════════════════════════════════════════ */
+function renderMatch(){
+  const pb=S.playerBatting
+  const {wkts,ovrs}=S.settings
+  const balls=S.bat.balls, ovNum=Math.floor(balls/6), ballInOv=balls%6
+  document.getElementById('innings-label').textContent=`INNINGS ${S.innings}`
+  document.getElementById('sc-team').textContent=pb?'YOU ARE BATTING':'CPU IS BATTING — YOU BOWL'
+  const rp=document.getElementById('role-pill')
+  rp.textContent=pb?'BATTING':'BOWLING'
+  rp.style.cssText=`margin-left:auto;padding:5px 12px;border-radius:8px;font-family:var(--fh);font-size:9px;font-weight:700;letter-spacing:1.5px;background:rgba(${pb?'59,130,246':'239,68,68'},.15);border:1px solid rgba(${pb?'59,130,246':'239,68,68'},.4);color:var(--${pb?'blue-l':'red-l'})`
+  document.getElementById('sc-score').innerHTML=`${S.bat.runs}<span>/${S.bat.wkts}</span>`
+  document.getElementById('sc-wkts').textContent=wkts>0?`${S.bat.wkts}/${wkts} wkts`:`${S.bat.wkts} wkts`
+  document.getElementById('sc-ovrs').textContent=ovrs>0?`Over ${ovNum}.${ballInOv}/${ovrs}`:`Over ${ovNum}.${ballInOv}`
+  if(S.innings===2){
+    const tgt=S.firstScore+1,need=tgt-S.bat.runs,bl=ovrs>0?(ovrs*6-balls):'∞'
+    document.getElementById('sc-target').style.display='block'
+    document.getElementById('sc-target').textContent=`TARGET ${tgt}`
+    document.getElementById('sc-need').style.display='block'
+    document.getElementById('sc-need').textContent=need>0?`Need ${need} more${bl!=='∞'?` in ${bl} balls`:''}`:''
+  } else {
+    document.getElementById('sc-target').style.display='none'
+    document.getElementById('sc-need').style.display='none'
+  }
+  setMatchHands(null,null)
+  document.getElementById('ml-lbl').textContent=pb?'YOU (BAT)':'YOU (BOWL)'
+  document.getElementById('mr-lbl').textContent=pb?'CPU (BOWL)':'CPU (BAT)'
+  document.getElementById('ml-lbl').style.color=pb?'var(--blue-l)':'var(--red-l)'
+  document.getElementById('mr-lbl').style.color=pb?'var(--red-l)':'var(--blue-l)'
+  document.getElementById('match-result').textContent='—'
+  document.getElementById('match-result').className='match-result'
+  document.getElementById('match-info').textContent=pb?'Pick your number to bat':'Pick your number to bowl'
+  setGridEnabled(true)
+}
+function setMatchHands(ln,rn){
+  const pb=S.playerBatting
+  const lc=pb?'#93c5fd':'#fca5a5', rc=pb?'#fca5a5':'#93c5fd'
+  document.getElementById('ml-hand').innerHTML=mkHand(ln===null?0:ln,lc)
+  document.getElementById('mr-hand').innerHTML=mkHand(rn===null?0:rn,rc,true)
+  document.getElementById('ml-num').textContent=ln===null?'?':ln
+  document.getElementById('mr-num').textContent=rn===null?'?':rn
+}
+
+/* ══════════════════════════════════════════
+   SMART CPU AI
+   More difficult bowl: tracks player batting choices,
+   biases toward matching them. Also bats smartly.
+   ══════════════════════════════════════════ */
+function cpuBowlChoice(){
+  const h=S.playerBatHistory
+  const r=Math.random()
+  if(h.length>=4){
+    if(r<0.25){
+      // Pick the #1 most thrown by player (most likely to match)
+      const freq={}; h.forEach(n=>freq[n]=(freq[n]||0)+1)
+      const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1])
+      return parseInt(sorted[0][0])
+    }
+    if(r<0.48){
+      // Pick from player's recent 5 throws
+      const recent=h.slice(-5)
+      return recent[Math.floor(Math.random()*recent.length)]
+    }
+  } else if(h.length>=1&&r<0.3){
+    // Early game: still try last throw
+    return h[h.length-1]
+  }
+  return Math.floor(Math.random()*11)
+}
+
+function cpuBatChoice(){
+  const h=S.playerBowlHistory
+  const r=Math.random()
+  // Avoid player's common bowling numbers
+  if(h.length>=3&&r<0.35){
+    const freq={}; h.forEach(n=>freq[n]=(freq[n]||0)+1)
+    const avoid=new Set(Object.entries(freq).filter(([,v])=>v>=2).map(([k])=>parseInt(k)))
+    const safe=Array.from({length:11},(_,i)=>i).filter(n=>!avoid.has(n))
+    if(safe.length>0) return safe[Math.floor(Math.random()*safe.length)]
+  }
+  // Prefer high-value numbers (6-10 for big scores)
+  if(r<0.38) return 6+Math.floor(Math.random()*5)
+  // Rarely throw 0 (risky special rule)
+  if(r<0.42) return 0
+  return Math.floor(Math.random()*11)
+}
+
+/* ══════════════════════════════════════════
+   BALL PLAY
+   ══════════════════════════════════════════ */
+function onBallNum(playerNum){
+  if(S.animating) return
+  S.animating=true
+  SFX.click()
+  setGridEnabled(false)
+
+  const pb=S.playerBatting
+  const cpuNum = pb ? cpuBowlChoice() : cpuBatChoice()
+
+  // Track history
+  if(pb) S.playerBatHistory.push(playerNum)
+  else   S.playerBowlHistory.push(playerNum)
+  if(S.playerBatHistory.length>20) S.playerBatHistory.shift()
+  if(S.playerBowlHistory.length>20) S.playerBowlHistory.shift()
+
+  const batterNum = pb ? playerNum : cpuNum
+  const bowlerNum = pb ? cpuNum : playerNum
+
+  // Shake animation on match hands
+  const lh=document.getElementById('ml-hand'),rh=document.getElementById('mr-hand')
+  const lc=pb?'#93c5fd':'#fca5a5',rc=pb?'#fca5a5':'#93c5fd'
+  lh.innerHTML=mkHand(0,lc); rh.innerHTML=mkHand(0,rc,true)
+  lh.style.animation=''; rh.style.animation=''
+  document.getElementById('ml-num').textContent='?'
+  document.getElementById('mr-num').textContent='?'
+  document.getElementById('match-result').textContent='...'
+  document.getElementById('match-result').className='match-result'
+
+  void lh.offsetWidth
+  lh.style.animation='handPump .34s ease-in-out 3'
+  rh.style.animation='handPump .34s ease-in-out 3'
+  if(S.snd){SFX.pump();setTimeout(SFX.pump,340);setTimeout(SFX.pump,680)}
+
+  setTimeout(()=>{
+    lh.style.animation='handReveal .48s cubic-bezier(.175,.885,.32,1.275) forwards'
+    rh.style.animation='handReveal .48s cubic-bezier(.175,.885,.32,1.275) forwards'
+    lh.innerHTML=mkHand(playerNum,lc)
+    rh.innerHTML=mkHand(cpuNum,rc,true)
+    document.getElementById('ml-num').textContent=playerNum
+    document.getElementById('mr-num').textContent=cpuNum
+    SFX.reveal()
+
+    const out=batterNum===bowlerNum
+    let runs=0,special=false
+    if(!out){
+      if(batterNum===0){runs=bowlerNum;special=true}
+      else runs=batterNum
+    }
+
+    setTimeout(()=>{
+      const re=document.getElementById('match-result')
+      const ie=document.getElementById('match-info')
+      if(out){
+        re.textContent='OUT! 💥'; re.className='match-result out'
+        ie.textContent=`Both threw ${batterNum} — dismissed!`
+        SFX.out()
+        if(S.settings.wkts>0) S.bat.wkts++
+      } else {
+        if(runs===0){
+          re.textContent='• DOT'; re.className='match-result dot'
+          ie.textContent='Dot ball — no runs'
+        } else {
+          re.textContent=runs>=6?`+${runs} 🔥 HUGE!`:`+${runs} RUN${runs>1?'S':''}`
+          re.className='match-result run'
+          ie.textContent=special?`✊ Zero! Bowler's ${bowlerNum} becomes runs.`
+            :runs>=6?'SIX!!! 🏏':runs===4?'FOUR! 💫':'Good shot!'
+          if(runs>=6) SFX.six(); else SFX.hit(runs)
+        }
+        S.bat.runs+=runs
+      }
+      S.bat.balls++
+      renderScoreOnly()
+      setTimeout(()=>{
+        S.animating=false
+        if(!checkInningsEnd()){
+          setGridEnabled(true)
+          if(S.innings===2&&S.bat.runs>=S.firstScore+1) endMatch()
+        }
+      },700)
+    },460)
+  },1080)
+}
+
+function renderScoreOnly(){
+  const b=S.bat.balls,ov=Math.floor(b/6),bi=b%6
+  const {wkts,ovrs}=S.settings
+  document.getElementById('sc-score').innerHTML=`${S.bat.runs}<span>/${S.bat.wkts}</span>`
+  document.getElementById('sc-wkts').textContent=wkts>0?`${S.bat.wkts}/${wkts} wkts`:`${S.bat.wkts} wkts`
+  document.getElementById('sc-ovrs').textContent=ovrs>0?`Over ${ov}.${bi}/${ovrs}`:`Over ${ov}.${bi}`
+  if(S.innings===2){
+    const tgt=S.firstScore+1,need=tgt-S.bat.runs,bl=ovrs>0?(ovrs*6-b):'∞'
+    document.getElementById('sc-need').textContent=need>0?`Need ${need} more${bl!=='∞'?` in ${bl} balls`:''}`:''
+  }
+}
+
+function checkInningsEnd(){
+  const {wkts,balls,runs}=S.bat
+  const {wkts:mw,ovrs:mo}=S.settings
+  const ov=Math.floor(balls/6)
+  if((mw>0&&wkts>=mw)||(mo>0&&ov>=mo)){
+    if(S.innings===1){
+      S.firstScore=runs
+      const pb=S.playerBatting
+      document.getElementById('brk-title').textContent=pb?'YOUR INNINGS COMPLETE':"CPU'S INNINGS COMPLETE"
+      document.getElementById('brk-score').textContent=`${runs}/${wkts}`
+      document.getElementById('brk-target').textContent=`${pb?'CPU needs':'You need'} ${runs+1} to win`
+      document.getElementById('break-overlay').classList.add('show')
+      return true
+    }
+    endMatch(); return true
+  }
+  return false
+}
+function setGridEnabled(en){document.querySelectorAll('#match-grid .num-btn').forEach(b=>b.disabled=!en)}
+
+/* ══════════════════════════════════════════
+   END MATCH
+   ══════════════════════════════════════════ */
+function endMatch(){
+  const chaser=S.playerBatFirst?'cpu':'player'
+  const target=S.firstScore+1
+  const chaserRuns=S.bat.runs, chaserWkts=S.bat.wkts
+  const playerWon=chaser==='player'?chaserRuns>=target:chaserRuns<target
+
+  if(playerWon){SFX.win();confetti();document.getElementById('res-icon').textContent='🏆';document.getElementById('res-title').textContent='YOU WIN!';document.getElementById('res-title').className='res-title win'}
+  else{SFX.lose();document.getElementById('res-icon').textContent='🤖';document.getElementById('res-title').textContent='CPU WINS';document.getElementById('res-title').className='res-title lose'}
+
+  const p1l=S.playerBatFirst?'Your Score (1st)':'CPU Score (1st)'
+  const p2l=S.playerBatFirst?'CPU Score (2nd)':'Your Score (2nd)'
+  const margin=playerWon
+    ? (chaser==='player'?`Won by ${S.settings.wkts>0?(S.settings.wkts-chaserWkts)+' wkts':chaserRuns-S.firstScore+' runs'}`:'Won by '+(S.firstScore-chaserRuns)+' runs')
+    : (chaser==='cpu'?`Lost by ${chaserRuns-S.firstScore} runs`:`Lost by ${S.settings.wkts>0?(S.settings.wkts-chaserWkts)+' wkts':target-chaserRuns+' runs'}`)
+
+  document.getElementById('scoresheet').innerHTML=`
+    <div class="ss-row"><span class="ss-k">${p1l}</span><span class="ss-v">${S.firstScore}</span></div>
+    <div class="ss-row"><span class="ss-k">${p2l}</span><span class="ss-v">${chaserRuns}/${chaserWkts}</span></div>
+    <div class="ss-row"><span class="ss-k">Target</span><span class="ss-v">${target}</span></div>
+    <div class="ss-row"><span class="ss-k">Result</span><span class="ss-v" style="color:${playerWon?'var(--green)':'var(--red)'}">${margin}</span></div>`
+
+  showScreen('result-screen')
+}
+
+/* ══════════════════════════════════════════
+   SHAKE ANIMATION (toss reveal)
+   ══════════════════════════════════════════ */
+function doShake(title,ln,lNum,lc,rn,rNum,rc,flip,onDone){
+  document.getElementById('anim-title').textContent=title
+  document.getElementById('left-name').textContent=ln
+  document.getElementById('right-name').textContent=rn
+  document.getElementById('left-num').textContent=''
+  document.getElementById('right-num').textContent=''
+  document.getElementById('anim-result').textContent=''
+  document.getElementById('anim-sub').textContent=''
+
+  const lh=document.getElementById('left-hand'),rh=document.getElementById('right-hand')
+  lh.innerHTML=mkHand(0,lc); rh.innerHTML=mkHand(0,rc,true)
+  lh.style.animation=''; rh.style.animation=''
+  showScreen('anim-screen')
+
+  void lh.offsetWidth
+  lh.style.animation='handPump .34s ease-in-out 3'
+  rh.style.animation='handPump .34s ease-in-out 3'
+  if(S.snd){SFX.pump();setTimeout(SFX.pump,340);setTimeout(SFX.pump,680)}
+
+  setTimeout(()=>{
+    lh.innerHTML=mkHand(lNum,lc); rh.innerHTML=mkHand(rNum,rc,true)
+    lh.style.animation='handReveal .48s cubic-bezier(.175,.885,.32,1.275) forwards'
+    rh.style.animation='handReveal .48s cubic-bezier(.175,.885,.32,1.275) forwards'
+    SFX.reveal()
+    setTimeout(onDone,600)
+  },1080)
+}
+
+/* ══════════════════════════════════════════
+   BUILD NUMBER GRID
+   ══════════════════════════════════════════ */
+function buildGrid(id,onPick,startDisabled){
+  const c=document.getElementById(id); c.innerHTML=''
+  for(let n=0;n<=10;n++){
+    const btn=document.createElement('button')
+    btn.className='num-btn'; btn.disabled=startDisabled
+    btn.innerHTML=`<div class="hand-icon">${mkHand(n,'#d1d5db')}</div><div class="num-lbl">${n}</div>`
+    btn.addEventListener('click',()=>onPick(n))
+    c.appendChild(btn)
+  }
+}
+
+/* ══════════════════════════════════════════
+   MISC
+   ══════════════════════════════════════════ */
+function toggleSnd(){S.snd=!S.snd;const b=document.getElementById('snd-btn');b.textContent=S.snd?'🔊 Sound':'🔇 Sound';b.className='snd-tog'+(S.snd?' on':'');if(S.snd){getAC();SFX.click()}}
+function confirmQuit(){if(confirm('Leave this match?'))showScreen('menu-screen')}
+function confetti(){
+  const c=document.getElementById('confetti-container'),cols=['#f59e0b','#10b981','#3b82f6','#fff','#ef4444','#06b6d4']
+  for(let i=0;i<80;i++)setTimeout(()=>{const p=document.createElement('div');p.className='cp';const col=cols[i%cols.length],w=6+Math.random()*10,dur=1.5+Math.random()*2.5;p.style.cssText=`left:${Math.random()*100}%;background:${col};width:${w}px;height:${w}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${dur}s;animation-delay:${Math.random()*.4}s`;c.appendChild(p);setTimeout(()=>p.remove(),4000)},i*18)
+}
+
+initBG()
+validateSettings()
+</script>
+</body>
+</html>
