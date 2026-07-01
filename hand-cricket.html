@@ -330,72 +330,59 @@ const HC = {
    HAND SVG GENERATOR
    ViewBox 80 × 110. Palm-forward view.
    ══════════════════════════════════════════ */
-function mkHand(n, col='#e2e8f0', flip=false) {
-  const [th, ix, mi, ri, pi] = HC[n]
-  const stroke = 'rgba(0,0,0,0.22)'
-  const baseY = 64
+/* ════════════════════════════════════════════════════════
+   HAND IMAGES — drop your own PNG/vector files here.
+   ════════════════════════════════════════════════════════
+   Put your 12 image files in an "images" folder next to this
+   HTML file (same folder as hand-cricket.html), named exactly:
 
-  // pinky, ring, middle, index — left to right
-  const F = [
-    { cx:20, w:14, top:36, ext:pi },
-    { cx:37, w:15, top:20, ext:ri },
-    { cx:54, w:16, top:10, ext:mi },
-    { cx:71, w:15, top:22, ext:ix },
-  ]
+     images/hand-0.png   ✊  (also used as the "fist/tap" image
+                              shown before signs are thrown)
+     images/hand-1.png   ☝️
+     images/hand-2.png   ✌️
+     images/hand-3.png
+     images/hand-4.png
+     images/hand-5.png   🖐️
+     images/hand-6.png   👍
+     images/hand-7.png
+     images/hand-8.png
+     images/hand-9.png
+     images/hand-10.png  🤙
 
-  let d = ''
-  F.forEach((f, i) => {
-    const x1 = f.cx - f.w/2, x2 = f.cx + f.w/2
-    if (i === 0) d += `M ${x1} ${baseY} `
-    else d += `L ${x1} ${baseY} `
+   That's 11 sign images (0–10). The fist image (hand-0.png) is
+   reused automatically as the "tap/shake" pose before reveal,
+   so you only need 11 files total — but if you'd rather use a
+   DIFFERENT image specifically for the pre-throw tap animation,
+   add a 12th file named "images/hand-fist-tap.png" and it will
+   be picked up automatically instead of hand-0.png for that.
 
-    if (f.ext) {
-      d += `C ${x1} ${baseY-14} ${x1} ${f.top+10} ${x1} ${f.top+6} `
-      d += `C ${x1} ${f.top} ${x2} ${f.top} ${x2} ${f.top+6} `
-      d += `C ${x2} ${f.top+10} ${x2} ${baseY-14} ${x2} ${baseY} `
-    } else {
-      const bumpTop = baseY - 13
-      d += `C ${x1} ${bumpTop+6} ${x1} ${bumpTop} ${f.cx} ${bumpTop} `
-      d += `C ${x2} ${bumpTop} ${x2} ${bumpTop+6} ${x2} ${baseY} `
-    }
-  })
+   File format: PNG, SVG, or WEBP all work — just keep the
+   extension below matching what you actually use.
+   ════════════════════════════════════════════════════════ */
+const IMG_FOLDER = 'images'
+const IMG_EXT = 'png'   // change to 'svg' or 'webp' if that's what you're using
 
-  // From end of index finger, curve down the right side of the palm,
-  // across the wrist, then back up the left side to close.
-  d += `C 84 70, 86 85, 80 100 `
-  d += `L 66 100 `
-  d += `C 66 119, 34 119, 34 100 `
-  d += `L 20 100 `
-  d += `C 28 85, 26 70, 13 64 `
-  d += `Z`
+function handImgPath(n) {
+  return `${IMG_FOLDER}/hand-${n}.${IMG_EXT}`
+}
+function fistTapImgPath() {
+  // Falls back to hand-0 if a dedicated tap image isn't provided.
+  return `${IMG_FOLDER}/hand-fist-tap.${IMG_EXT}`
+}
 
-  // Thumb — separate overlapping sub-shape so it can angle naturally
-  let thumbD
-  if (th) {
-    thumbD = `M 76 80
-      C 88 75, 99 66, 96 51
-      C 94 44, 86 46, 82 55
-      C 79 63, 78 72, 76 80
-      C 74 88, 74 95, 78 99
-      L 67 100
-      C 67 91, 70 84, 76 80
-      Z`
-  } else {
-    thumbD = `M 76 81
-      C 87 78, 93 85, 91 95
-      C 89 102, 79 103, 73 98
-      C 70 93, 71 86, 76 81
-      Z`
-  }
-
-  const flipAttr = flip
-    ? ` style="transform:scaleX(-1);transform-box:fill-box;transform-origin:50% 50%"`
-    : ''
-
-  return `<svg viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg"${flipAttr}>
-    <path d="${d}" fill="${col}" stroke="${stroke}" stroke-width="1.4" stroke-linejoin="round"/>
-    <path d="${thumbD}" fill="${col}" stroke="${stroke}" stroke-width="1.4" stroke-linejoin="round"/>
-  </svg>`
+/* Returns an <img> tag. `tap` = true uses the dedicated fist/tap
+   image (with fallback to hand-0 on load error) instead of the
+   normal sign image. `flip` mirrors it horizontally (used for the
+   right-hand side so both hands face each other). */
+function mkHand(n, _col, flip=false, tap=false) {
+  const src = tap ? fistTapImgPath() : handImgPath(n)
+  const fallback = handImgPath(0)
+  const flipStyle = flip ? 'transform:scaleX(-1);' : ''
+  // onerror: if a dedicated tap image is missing, silently fall back
+  // to hand-0.png instead of showing a broken image icon.
+  const onerr = tap ? ` onerror="this.onerror=null;this.src='${fallback}'"` : ''
+  return `<img src="${src}" alt="${tap?'fist':'hand '+n}" draggable="false"
+    style="width:100%;height:100%;object-fit:contain;${flipStyle}"${onerr}/>`
 }
 
 /* ══════════════════════════════════════════
@@ -575,8 +562,8 @@ function renderMatch(){
 function setMatchHands(ln,rn){
   const pb=S.playerBatting
   const lc=pb?'#93c5fd':'#fca5a5', rc=pb?'#fca5a5':'#93c5fd'
-  document.getElementById('ml-hand').innerHTML=mkHand(ln===null?0:ln,lc)
-  document.getElementById('mr-hand').innerHTML=mkHand(rn===null?0:rn,rc,true)
+  document.getElementById('ml-hand').innerHTML=mkHand(ln===null?0:ln,lc,false,ln===null)
+  document.getElementById('mr-hand').innerHTML=mkHand(rn===null?0:rn,rc,true,rn===null)
   document.getElementById('ml-num').textContent=ln===null?'?':ln
   document.getElementById('mr-num').textContent=rn===null?'?':rn
 }
@@ -649,7 +636,7 @@ function onBallNum(playerNum){
   // Shake animation on match hands
   const lh=document.getElementById('ml-hand'),rh=document.getElementById('mr-hand')
   const lc=pb?'#93c5fd':'#fca5a5',rc=pb?'#fca5a5':'#93c5fd'
-  lh.innerHTML=mkHand(0,lc); rh.innerHTML=mkHand(0,rc,true)
+  lh.innerHTML=mkHand(0,lc,false,true); rh.innerHTML=mkHand(0,rc,true,true)
   lh.style.animation=''; rh.style.animation=''
   document.getElementById('ml-num').textContent='?'
   document.getElementById('mr-num').textContent='?'
@@ -783,7 +770,7 @@ function doShake(title,ln,lNum,lc,rn,rNum,rc,flip,onDone){
   document.getElementById('anim-sub').textContent=''
 
   const lh=document.getElementById('left-hand'),rh=document.getElementById('right-hand')
-  lh.innerHTML=mkHand(0,lc); rh.innerHTML=mkHand(0,rc,true)
+  lh.innerHTML=mkHand(0,lc,false,true); rh.innerHTML=mkHand(0,rc,true,true)
   lh.style.animation=''; rh.style.animation=''
   showScreen('anim-screen')
 
